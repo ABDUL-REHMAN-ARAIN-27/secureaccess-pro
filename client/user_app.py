@@ -176,21 +176,33 @@ class UserApp:
         grid = tk.Frame(self.root, bg=BG, padx=18)
         grid.pack(fill="both", expand=True)
 
+        # Each app carries the roles allowed to use it (mirrors the server-side
+        # RBAC matrix). Only the applications the signed-in role may access are
+        # shown — the rest are simply not rendered.
+        role = data["role"]
         apps = [
-            ("\U0001F465", "HR Portal", "Employee records & leave management", self.open_hr),
-            ("\U0001F4B0", "Finance Dashboard", "Revenue, expenses & invoices", self.open_finance),
-            ("\U0001F4C1", "Document Manager", "Shared documents (read access)", self.open_documents),
+            ("\U0001F465", "HR Portal", "Employee records & leave management",
+             self.open_hr, {"Admin", "User"}),
+            ("\U0001F4B0", "Finance Dashboard", "Revenue, expenses & invoices",
+             self.open_finance, {"Admin"}),
+            ("\U0001F4C1", "Document Manager", "Shared documents (read access)",
+             self.open_documents, {"Admin", "User", "Viewer"}),
         ]
-        for i, (icon, title, desc, cmd) in enumerate(apps):
+        visible = [a for a in apps if role in a[4]]
+        for i, (icon, title, desc, cmd, _roles) in enumerate(visible):
             self._app_tile(grid, icon, title, desc, cmd).grid(
                 row=0, column=i, padx=12, pady=14, sticky="nsew")
             grid.columnconfigure(i, weight=1)
 
-        self.result = tk.Text(self.root, height=9, bg=CARD, fg=TEXT, relief="flat",
+        self.result = tk.Text(self.root, height=8, bg=CARD, fg=TEXT, relief="flat",
                               font=("Consolas", 10), padx=14, pady=12, wrap="word")
         self.result.pack(fill="both", expand=False, padx=24, pady=(4, 20))
-        self.result.insert("1.0", "Click an application above. The server enforces your "
-                                  "role — access is GRANTED or DENIED accordingly.\n")
+        self.result.insert(
+            "1.0",
+            f"You have access to {len(visible)} application(s) for the '{role}' role. "
+            "Click one to open it — the server re-verifies your permission on every "
+            "request (Zero Trust).\n",
+        )
         self.result.configure(state="disabled")
 
     def _app_tile(self, parent, icon, title, desc, cmd):
