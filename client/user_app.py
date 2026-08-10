@@ -108,11 +108,15 @@ class UserApp:
         back.bind("<Button-1>", lambda _e: self.show_login())
 
     def _field(self, parent, label, row, show=None):
-        tk.Label(parent, text=label, font=("Segoe UI", 11), bg=parent["bg"],
-                 fg=MUTED, anchor="w").grid(row=row, column=0, columnspan=2, sticky="w", pady=(8, 2))
-        entry = tk.Entry(parent, font=("Segoe UI", 12), width=30, show=show,
+        # Each field is its own container gridded on a single row, so the label
+        # sits above the entry instead of being overlapped by it.
+        holder = tk.Frame(parent, bg=parent["bg"])
+        holder.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(6, 2))
+        tk.Label(holder, text=label, font=("Segoe UI", 11), bg=parent["bg"],
+                 fg=MUTED, anchor="w").pack(fill="x", pady=(0, 2))
+        entry = tk.Entry(holder, font=("Segoe UI", 12), width=30, show=show,
                          bg=FIELD, fg=TEXT, insertbackground=TEXT, relief="flat")
-        entry.grid(row=row, column=0, columnspan=2, ipady=6, sticky="ew")
+        entry.pack(fill="x", ipady=6)
         return entry
 
     # ------------------------------------------------------------------ #
