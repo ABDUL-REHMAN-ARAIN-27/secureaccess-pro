@@ -224,6 +224,33 @@ class UserApp:
         self.result.insert("1.0", f"{badge}  —  {title}\n\n{body}\n")
         self.result.configure(state="disabled")
 
+    @staticmethod
+    def _render(value, indent=0):
+        """Pretty-print the confidential data payload (nested dicts/lists)."""
+        pad = "  " * indent
+        lines = []
+        if isinstance(value, dict):
+            for k, v in value.items():
+                if str(k).startswith("_"):
+                    continue
+                label = str(k).replace("_", " ").title()
+                if isinstance(v, (dict, list)):
+                    lines.append(f"{pad}{label}:")
+                    lines.append(UserApp._render(v, indent + 1))
+                else:
+                    lines.append(f"{pad}{label}: {v}")
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    summary = "  ".join(f"{str(k2).replace('_',' ').title()}={v2}"
+                                        for k2, v2 in item.items())
+                    lines.append(f"{pad}• {summary}")
+                else:
+                    lines.append(f"{pad}• {item}")
+        else:
+            lines.append(f"{pad}{value}")
+        return "\n".join(l for l in lines if l)
+
     def _open(self, title, fn):
         try:
             data = fn()
@@ -235,10 +262,8 @@ class UserApp:
             else:
                 self._show_result(title, False, exc.message)
             return
-        lines = [data.get("message", "")]
-        for k, v in (data.get("data") or {}).items():
-            lines.append(f"  • {k.replace('_', ' ').title()}: {v}")
-        self._show_result(title, True, "\n".join(lines))
+        body = data.get("message", "") + "\n\n" + self._render(data.get("data") or {})
+        self._show_result(title, True, body)
 
     def open_hr(self):
         self._open("HR Portal", self.api.open_hr)

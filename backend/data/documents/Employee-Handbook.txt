@@ -1,0 +1,19 @@
+INTERNAL — SecureAccess Pro Employee Handbook (Sample Document)
+
+Welcome
+   This handbook summarises workplace policies for all staff.
+
+Working Hours
+   Standard hours are 09:00–18:00, Monday to Friday.
+
+Leave Policy
+   Annual leave: 20 days. Sick leave: 10 days. Apply via the HR Portal.
+
+Acceptable Use
+   Company systems are for business use. Protect your credentials and
+   never share your TOTP codes.
+
+Code of Conduct
+   Treat colleagues with respect. Report security concerns promptly.
+
+(This is synthetic sample content for the SecureAccess Pro FYP demo.)

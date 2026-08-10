@@ -54,6 +54,11 @@ secureaccess-pro/
 │   ├── show_code.py         # print a user's current TOTP (demo helper)
 │   ├── models/              # User, AccessLog, LoginHistory, SiteAccess
 │   ├── routes/              # auth, resources (RBAC apps), admin (monitoring)
+│   ├── datastore.py         # loads the confidential data served by the apps
+│   ├── data/                # confidential data behind the gateway (synthetic)
+│   │   ├── hr/employees.json
+│   │   ├── finance/financials.json
+│   │   └── documents/*.txt
 │   └── requirements.txt
 ├── client/                  # Tkinter desktop GUIs
 │   ├── api_client.py        # shared REST client

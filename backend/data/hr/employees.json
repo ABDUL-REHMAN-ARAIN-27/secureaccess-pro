@@ -1,0 +1,18 @@
+{
+  "_note": "SAMPLE / SYNTHETIC confidential data for the SecureAccess Pro demo. Not real people.",
+  "classification": "CONFIDENTIAL - HR",
+  "summary": {
+    "total_employees": 6,
+    "departments": 5,
+    "open_positions": 3,
+    "pending_leave_requests": 7
+  },
+  "employees": [
+    {"id": "EMP-1001", "name": "Ayesha Khan",   "department": "Engineering", "position": "Senior Developer", "salary_pkr": 185000, "leave_balance_days": 12, "status": "Active"},
+    {"id": "EMP-1002", "name": "Bilal Ahmed",   "department": "Finance",     "position": "Accountant",        "salary_pkr": 140000, "leave_balance_days": 8,  "status": "Active"},
+    {"id": "EMP-1003", "name": "Fatima Noor",   "department": "HR",          "position": "HR Manager",        "salary_pkr": 160000, "leave_balance_days": 15, "status": "Active"},
+    {"id": "EMP-1004", "name": "Hamza Sheikh",  "department": "Engineering", "position": "QA Engineer",       "salary_pkr": 120000, "leave_balance_days": 5,  "status": "On Leave"},
+    {"id": "EMP-1005", "name": "Sana Malik",    "department": "Marketing",   "position": "Content Lead",      "salary_pkr": 110000, "leave_balance_days": 10, "status": "Active"},
+    {"id": "EMP-1006", "name": "Usman Raza",    "department": "Operations",  "position": "Ops Coordinator",   "salary_pkr": 95000,  "leave_balance_days": 3,  "status": "Active"}
+  ]
+}

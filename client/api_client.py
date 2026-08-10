@@ -98,6 +98,9 @@ class ApiClient:
     def open_documents(self):
         return self._request("GET", "/api/protected/documents")
 
+    def read_document(self, name):
+        return self._request("GET", f"/api/protected/documents/{name}")
+
     # ------------------------------------------------------------------ #
     # Admin / monitoring
     # ------------------------------------------------------------------ #

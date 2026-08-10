@@ -1,0 +1,21 @@
+CONFIDENTIAL — INTERNAL USE ONLY
+SecureAccess Pro — Q3 Security Policy (Sample Document)
+
+1. Access Control
+   - All access follows Zero Trust: never trust, always verify.
+   - Every user authenticates with a password AND a TOTP second factor.
+   - Roles (Admin / User / Viewer) are enforced server-side on every request.
+
+2. Session Management
+   - JWT sessions expire after 15 minutes and must be re-issued.
+   - Idle sessions are invalidated; re-authentication is required.
+
+3. Monitoring
+   - All access events are logged with timestamp, user and IP address.
+   - Anomalous behaviour is surfaced on the admin security dashboard.
+
+4. Incident Response
+   - Suspected compromise must be reported to the security team immediately.
+   - Accounts are locked after 3 consecutive failed login attempts.
+
+(This is synthetic sample content for the SecureAccess Pro FYP demo.)

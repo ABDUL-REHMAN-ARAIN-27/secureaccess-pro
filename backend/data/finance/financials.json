@@ -1,0 +1,25 @@
+{
+  "_note": "SAMPLE / SYNTHETIC confidential data for the SecureAccess Pro demo.",
+  "classification": "CONFIDENTIAL - FINANCE",
+  "fiscal_year": 2025,
+  "summary": {
+    "revenue_pkr": 15000000,
+    "expenses_pkr": 7500000,
+    "net_profit_pkr": 7500000,
+    "cash_in_bank_pkr": 4200000,
+    "invoices_pending": 12
+  },
+  "quarterly_revenue_pkr": {"Q1": 3200000, "Q2": 3600000, "Q3": 4100000, "Q4": 4100000},
+  "expense_breakdown_pkr": {
+    "payroll": 4200000,
+    "infrastructure": 1500000,
+    "marketing": 900000,
+    "operations": 600000,
+    "misc": 300000
+  },
+  "pending_invoices": [
+    {"invoice": "INV-2025-0042", "client": "Acme Corp",     "amount_pkr": 450000, "due": "2025-09-15", "status": "Overdue"},
+    {"invoice": "INV-2025-0051", "client": "Globex Ltd",    "amount_pkr": 320000, "due": "2025-09-28", "status": "Pending"},
+    {"invoice": "INV-2025-0057", "client": "Initech",       "amount_pkr": 180000, "due": "2025-10-05", "status": "Pending"}
+  ]
+}

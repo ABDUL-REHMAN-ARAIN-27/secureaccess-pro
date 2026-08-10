@@ -1,0 +1,19 @@
+CONFIDENTIAL — INTERNAL USE ONLY
+SecureAccess Pro — Incident Response Plan (Sample Document)
+
+Phase 1 — Detection
+   - Dashboard flags repeated failed logins, denied access, or unusual IPs.
+
+Phase 2 — Containment
+   - Lock affected accounts; revoke active JWT sessions.
+
+Phase 3 — Eradication
+   - Rotate secrets (JWT signing key, affected user TOTP secrets).
+
+Phase 4 — Recovery
+   - Restore normal access after verification; monitor closely for 72 hours.
+
+Phase 5 — Lessons Learned
+   - Document the incident; update policy and detection rules.
+
+(This is synthetic sample content for the SecureAccess Pro FYP demo.)
