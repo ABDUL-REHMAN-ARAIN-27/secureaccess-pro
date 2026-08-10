@@ -1,0 +1,314 @@
+"""
+SecureAccess Pro - Admin Security Dashboard
+===========================================
+
+The specialised security dashboard for administrators (seminar's second GUI).
+After an Admin authenticates with password + TOTP, it shows live KPI tiles and
+auto-refreshing tabs for Access Logs, Login History and Site Access, plus a
+User & Role management panel.
+
+Run:
+    python admin_dashboard.py     # backend must be running on :5000
+"""
+
+import tkinter as tk
+from tkinter import messagebox, ttk
+
+from api_client import ApiClient, ApiError
+
+# --- Palette (dark security-console) ---------------------------------------
+BG = "#0b132b"
+PANEL = "#1c2541"
+FIELD = "#26314f"
+ACCENT = "#3a86ff"
+OK = "#2ecc71"
+WARN = "#f39c12"
+DANGER = "#e74c3c"
+TEXT = "#e6edf3"
+MUTED = "#9aa7bd"
+
+REFRESH_MS = 4000  # dashboard refresh interval (< 5s per spec)
+ROLES = ("Admin", "User", "Viewer")
+
+
+class AdminDashboard:
+    def __init__(self, root):
+        self.root = root
+        self.api = ApiClient()
+        self.root.title("SecureAccess Pro — Security Dashboard")
+        self.root.geometry("1180x760")
+        self.root.configure(bg=BG)
+        self.root.minsize(1040, 700)
+        self._refresh_job = None
+        self.show_login()
+
+    def clear(self):
+        if self._refresh_job:
+            self.root.after_cancel(self._refresh_job)
+            self._refresh_job = None
+        for w in self.root.winfo_children():
+            w.destroy()
+
+    # ------------------------------------------------------------------ #
+    # Login (Admin only)
+    # ------------------------------------------------------------------ #
+    def show_login(self):
+        self.clear()
+        tk.Label(self.root, text="\U0001F6E1  SecureAccess Pro", font=("Segoe UI", 26, "bold"),
+                 bg=BG, fg=TEXT).pack(pady=(60, 4))
+        tk.Label(self.root, text="Administrator Security Dashboard", font=("Segoe UI", 13),
+                 bg=BG, fg=MUTED).pack()
+
+        card = tk.Frame(self.root, bg=PANEL, padx=42, pady=34)
+        card.pack(pady=36)
+        tk.Label(card, text="Admin sign in", font=("Segoe UI", 15, "bold"),
+                 bg=PANEL, fg=TEXT).pack(anchor="w", pady=(0, 16))
+
+        self.e_user = self._field(card, "Username")
+        self.e_pass = self._field(card, "Password", show="*")
+        self.e_totp = self._field(card, "6-digit MFA code (TOTP)")
+
+        tk.Button(card, text="Authenticate", font=("Segoe UI", 12, "bold"), bg=ACCENT,
+                  fg="white", relief="flat", padx=10, pady=9, cursor="hand2",
+                  command=self.do_login).pack(fill="x", pady=(20, 6))
+        self.root.bind("<Return>", lambda _e: self.do_login())
+
+        tk.Label(self.root, text="Admin demo:  admin / Admin@123   •   MFA via  python backend/show_code.py admin",
+                 font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(side="bottom", pady=18)
+
+    def _field(self, parent, label, show=None):
+        tk.Label(parent, text=label, font=("Segoe UI", 11), bg=PANEL, fg=MUTED,
+                 anchor="w").pack(fill="x", pady=(8, 2))
+        e = tk.Entry(parent, font=("Segoe UI", 12), width=30, show=show, bg=FIELD,
+                     fg=TEXT, insertbackground=TEXT, relief="flat")
+        e.pack(fill="x", ipady=6)
+        return e
+
+    def do_login(self):
+        try:
+            data = self.api.login(self.e_user.get().strip(), self.e_pass.get(),
+                                  self.e_totp.get().strip())
+        except ApiError as exc:
+            messagebox.showerror("Authentication failed", exc.message)
+            return
+        if data["role"] != "Admin":
+            messagebox.showerror("Access denied",
+                                 "This dashboard is restricted to Administrators.")
+            self.api.logout()
+            return
+        self.show_dashboard()
+
+    # ------------------------------------------------------------------ #
+    # Dashboard
+    # ------------------------------------------------------------------ #
+    def show_dashboard(self):
+        self.clear()
+        self.root.unbind("<Return>")
+
+        top = tk.Frame(self.root, bg=PANEL, padx=22, pady=14)
+        top.pack(fill="x")
+        tk.Label(top, text="\U0001F6E1  Security Dashboard", font=("Segoe UI", 17, "bold"),
+                 bg=PANEL, fg=TEXT).pack(side="left")
+        tk.Button(top, text="Sign out", font=("Segoe UI", 10, "bold"), bg=DANGER, fg="white",
+                  relief="flat", padx=12, pady=6, cursor="hand2",
+                  command=self.sign_out).pack(side="right")
+        self.status_lbl = tk.Label(top, text="live", font=("Segoe UI", 10),
+                                    bg=PANEL, fg=OK)
+        self.status_lbl.pack(side="right", padx=14)
+
+        # KPI tiles
+        self.kpi_frame = tk.Frame(self.root, bg=BG, padx=16, pady=12)
+        self.kpi_frame.pack(fill="x")
+        self.kpi_labels = {}
+        specs = [
+            ("total_users", "Total Users", ACCENT),
+            ("total_logins", "Login Attempts", ACCENT),
+            ("failed_logins", "Failed Logins", WARN),
+            ("denied_access", "Access Denied", DANGER),
+            ("locked_accounts", "Locked Accounts", DANGER),
+            ("granted_access", "Access Granted", OK),
+        ]
+        for i, (key, label, color) in enumerate(specs):
+            self.kpi_labels[key] = self._kpi_tile(self.kpi_frame, label, color, i)
+            self.kpi_frame.columnconfigure(i, weight=1)
+
+        # Tabs
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("TNotebook", background=BG, borderwidth=0)
+        style.configure("TNotebook.Tab", background=PANEL, foreground=TEXT,
+                        padding=(16, 8), font=("Segoe UI", 10, "bold"))
+        style.map("TNotebook.Tab", background=[("selected", ACCENT)])
+        style.configure("Treeview", background=PANEL, fieldbackground=PANEL,
+                        foreground=TEXT, rowheight=24, font=("Consolas", 10))
+        style.configure("Treeview.Heading", background=FIELD, foreground=TEXT,
+                        font=("Segoe UI", 10, "bold"))
+
+        nb = ttk.Notebook(self.root)
+        nb.pack(fill="both", expand=True, padx=16, pady=(6, 16))
+
+        self.tree_access = self._table(nb, "Access Logs",
+                                       ("Time", "User", "Action", "Resource", "Status", "IP"))
+        self.tree_login = self._table(nb, "Login History",
+                                      ("Time", "User", "Status", "Reason", "IP"))
+        self.tree_site = self._table(nb, "Site Access",
+                                     ("Time", "Method", "Path", "IP", "User-Agent"))
+        self._build_users_tab(nb)
+
+        self.refresh()  # kicks off the auto-refresh loop
+
+    def _kpi_tile(self, parent, label, color, col):
+        card = tk.Frame(parent, bg=PANEL, padx=14, pady=14)
+        card.grid(row=0, column=col, padx=6, sticky="nsew")
+        val = tk.Label(card, text="—", font=("Segoe UI", 26, "bold"), bg=PANEL, fg=color)
+        val.pack()
+        tk.Label(card, text=label, font=("Segoe UI", 9), bg=PANEL, fg=MUTED).pack()
+        return val
+
+    def _table(self, notebook, name, columns):
+        frame = tk.Frame(notebook, bg=BG)
+        notebook.add(frame, text=name)
+        tree = ttk.Treeview(frame, columns=columns, show="headings")
+        for c in columns:
+            tree.heading(c, text=c)
+            tree.column(c, anchor="w", width=140, stretch=True)
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+        tree.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        tree.tag_configure("denied", foreground=DANGER)
+        tree.tag_configure("failed", foreground=WARN)
+        tree.tag_configure("granted", foreground=OK)
+        return tree
+
+    def _build_users_tab(self, notebook):
+        frame = tk.Frame(notebook, bg=BG, padx=10, pady=10)
+        notebook.add(frame, text="Users & Roles")
+        cols = ("ID", "Username", "Email", "Role", "Locked")
+        self.tree_users = ttk.Treeview(frame, columns=cols, show="headings", height=10)
+        for c in cols:
+            self.tree_users.heading(c, text=c)
+            self.tree_users.column(c, anchor="w", width=130)
+        self.tree_users.pack(fill="both", expand=True, side="top")
+
+        ctrl = tk.Frame(frame, bg=BG)
+        ctrl.pack(fill="x", pady=10)
+        tk.Label(ctrl, text="Set role:", font=("Segoe UI", 10), bg=BG, fg=TEXT).pack(side="left")
+        self.role_var = tk.StringVar(value="Viewer")
+        ttk.Combobox(ctrl, textvariable=self.role_var, values=list(ROLES),
+                     width=10, state="readonly").pack(side="left", padx=8)
+        tk.Button(ctrl, text="Apply role", font=("Segoe UI", 10, "bold"), bg=ACCENT,
+                  fg="white", relief="flat", padx=10, pady=5, cursor="hand2",
+                  command=self.apply_role).pack(side="left", padx=4)
+        tk.Button(ctrl, text="Unlock account", font=("Segoe UI", 10, "bold"), bg=WARN,
+                  fg="white", relief="flat", padx=10, pady=5, cursor="hand2",
+                  command=self.unlock_account).pack(side="left", padx=4)
+
+    # ------------------------------------------------------------------ #
+    def _selected_user_id(self):
+        sel = self.tree_users.selection()
+        if not sel:
+            messagebox.showinfo("No selection", "Select a user in the table first.")
+            return None
+        return self.tree_users.item(sel[0])["values"][0]
+
+    def apply_role(self):
+        uid = self._selected_user_id()
+        if uid is None:
+            return
+        try:
+            self.api.set_role(uid, self.role_var.get())
+        except ApiError as exc:
+            messagebox.showerror("Failed", exc.message)
+            return
+        self.refresh_users()
+
+    def unlock_account(self):
+        uid = self._selected_user_id()
+        if uid is None:
+            return
+        try:
+            self.api.unlock(uid)
+        except ApiError as exc:
+            messagebox.showerror("Failed", exc.message)
+            return
+        self.refresh_users()
+
+    # ------------------------------------------------------------------ #
+    # Data refresh
+    # ------------------------------------------------------------------ #
+    def _fill(self, tree, rows):
+        tree.delete(*tree.get_children())
+        for values, tag in rows:
+            tree.insert("", "end", values=values, tags=(tag,) if tag else ())
+
+    @staticmethod
+    def _short_time(iso):
+        return (iso or "").replace("T", " ")[:19]
+
+    def refresh(self):
+        try:
+            m = self.api.metrics()
+            for key, lbl in self.kpi_labels.items():
+                lbl.configure(text=str(m.get(key, "—")))
+
+            self._fill(self.tree_access, [
+                ((self._short_time(r["timestamp"]), r["username"], r["action"],
+                  r["resource"], r["status"], r["ip_address"]),
+                 self._status_tag(r["status"]))
+                for r in self.api.access_logs(80)
+            ])
+            self._fill(self.tree_login, [
+                ((self._short_time(r["login_time"]), r["username"], r["status"],
+                  r["failure_reason"] or "", r["ip_address"]),
+                 "failed" if r["status"] == "FAILED" else "granted")
+                for r in self.api.login_history(80)
+            ])
+            self._fill(self.tree_site, [
+                ((self._short_time(r["access_time"]), r["method"], r["page_accessed"],
+                  r["ip_address"], (r["user_agent"] or "")[:40]), None)
+                for r in self.api.site_access(80)
+            ])
+            self.refresh_users()
+            self.status_lbl.configure(text="● live", fg=OK)
+        except ApiError as exc:
+            self.status_lbl.configure(text=f"● {exc.message[:40]}", fg=DANGER)
+
+        self._refresh_job = self.root.after(REFRESH_MS, self.refresh)
+
+    def refresh_users(self):
+        try:
+            users = self.api.users()
+        except ApiError:
+            return
+        self._fill(self.tree_users, [
+            ((u["id"], u["username"], u["email"] or "", u["role"],
+              "YES" if u["locked"] else "no"),
+             "denied" if u["locked"] else None)
+            for u in users
+        ])
+
+    @staticmethod
+    def _status_tag(status):
+        if status in ("DENIED", "FAILED", "LOCKED"):
+            return "denied"
+        if status in ("GRANTED", "SUCCESS"):
+            return "granted"
+        return None
+
+    def sign_out(self):
+        if self._refresh_job:
+            self.root.after_cancel(self._refresh_job)
+            self._refresh_job = None
+        self.api.logout()
+        self.show_login()
+
+
+def main():
+    root = tk.Tk()
+    AdminDashboard(root)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
