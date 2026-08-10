@@ -73,7 +73,7 @@ class AdminDashboard:
                   command=self.do_login).pack(fill="x", pady=(20, 6))
         self.root.bind("<Return>", lambda _e: self.do_login())
 
-        tk.Label(self.root, text="Admin demo:  admin / Admin@123   •   MFA via  python backend/show_code.py admin",
+        tk.Label(self.root, text="Admin:  Abdul Rehman / AbdulRehman2711   •   MFA via  python backend/show_code.py \"Abdul Rehman\"",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(side="bottom", pady=18)
 
     def _field(self, parent, label, show=None):

@@ -79,7 +79,7 @@ class UserApp:
         self.root.bind("<Return>", lambda _e: self.do_login())
 
         tk.Label(self.root,
-                 text="Demo accounts:  admin / Admin@123   •   user / User@123   •   viewer / Viewer@123\n"
+                 text="Accounts:  Abdul Rehman / AbdulRehman2711   •   user / User@123   •   viewer / Viewer@123\n"
                       "Get the current MFA code with:  python backend/show_code.py <username>",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED, justify="center").pack(side="bottom", pady=16)
 

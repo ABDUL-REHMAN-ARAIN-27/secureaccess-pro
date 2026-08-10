@@ -90,11 +90,11 @@ This creates three accounts, each with a unique TOTP secret, and prints their
 provisioning URIs (add them to Google Authenticator / Authy) and the current
 6-digit codes:
 
-| Role   | Username | Password    |
-|--------|----------|-------------|
-| Admin  | `admin`  | `Admin@123` |
-| User   | `user`   | `User@123`  |
-| Viewer | `viewer` | `Viewer@123`|
+| Role   | Username       | Password          |
+|--------|----------------|-------------------|
+| Admin  | `Abdul Rehman` | `AbdulRehman2711` |
+| User   | `user`         | `User@123`        |
+| Viewer | `viewer`       | `Viewer@123`      |
 
 ### 3. Run the backend
 

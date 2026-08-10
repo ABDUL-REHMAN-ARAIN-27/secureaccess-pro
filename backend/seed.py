@@ -17,10 +17,10 @@ from extensions import db
 from models import User, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
 
 DEMO_USERS = [
-    # username,   email,                         password,     role
-    ("admin",  "admin@secureaccess.pro",  "Admin@123",  ROLE_ADMIN),
-    ("user",   "user@secureaccess.pro",   "User@123",   ROLE_USER),
-    ("viewer", "viewer@secureaccess.pro", "Viewer@123", ROLE_VIEWER),
+    # username,        email,                          password,          role
+    ("Abdul Rehman", "abdulrehmanarainmanni@gmail.com", "AbdulRehman2711", ROLE_ADMIN),
+    ("user",         "user@secureaccess.pro",           "User@123",        ROLE_USER),
+    ("viewer",       "viewer@secureaccess.pro",         "Viewer@123",      ROLE_VIEWER),
 ]
 
 
