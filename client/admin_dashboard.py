@@ -12,7 +12,7 @@ Run:
 """
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from api_client import ApiClient, ApiError
 
@@ -27,7 +27,7 @@ DANGER = "#e74c3c"
 TEXT = "#e6edf3"
 MUTED = "#9aa7bd"
 
-REFRESH_MS = 4000  # dashboard refresh interval (< 5s per spec)
+REFRESH_MS = 2000  # dashboard refresh interval (< 2s per Expected Outcomes)
 ROLES = ("Admin", "User", "Viewer")
 
 
@@ -132,6 +132,19 @@ class AdminDashboard:
             self.kpi_labels[key] = self._kpi_tile(self.kpi_frame, label, color, i)
             self.kpi_frame.columnconfigure(i, weight=1)
 
+        # Export toolbar (audit log export to CSV)
+        bar = tk.Frame(self.root, bg=BG, padx=16)
+        bar.pack(fill="x")
+        tk.Label(bar, text="Export audit CSV:", font=("Segoe UI", 10),
+                 bg=BG, fg=MUTED).pack(side="left", pady=6)
+        for label, dataset in (("Access Logs", "access-logs"),
+                               ("Login History", "login-history"),
+                               ("Site Access", "site-access")):
+            tk.Button(bar, text=label, font=("Segoe UI", 9, "bold"), bg=PANEL,
+                      fg=TEXT, relief="flat", padx=10, pady=4, cursor="hand2",
+                      command=lambda d=dataset, l=label: self.export(d, l)
+                      ).pack(side="left", padx=4, pady=6)
+
         # Tabs
         style = ttk.Style()
         style.theme_use("default")
@@ -233,6 +246,24 @@ class AdminDashboard:
             messagebox.showerror("Failed", exc.message)
             return
         self.refresh_users()
+
+    def export(self, dataset, label):
+        try:
+            csv_text = self.api.export_csv(dataset)
+        except ApiError as exc:
+            messagebox.showerror("Export failed", exc.message)
+            return
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            initialfile=f"{dataset}.csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+            title=f"Save {label} export",
+        )
+        if not path:
+            return
+        with open(path, "w", newline="", encoding="utf-8") as fh:
+            fh.write(csv_text)
+        messagebox.showinfo("Export complete", f"{label} saved to:\n{path}")
 
     # ------------------------------------------------------------------ #
     # Data refresh

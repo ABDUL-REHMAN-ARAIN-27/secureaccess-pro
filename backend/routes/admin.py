@@ -5,9 +5,11 @@ Powers the real-time security dashboard: access logs, login history, raw site
 access, aggregate metrics, and user/role management.
 """
 
+import csv
+import io
 from datetime import datetime, timedelta
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
 from extensions import db
@@ -116,3 +118,48 @@ def unlock_user(user_id):
     db.session.commit()
     record_access(get_jwt_identity(), "UNLOCK", f"user:{user.username}", "SUCCESS")
     return jsonify({"message": "Account unlocked", "user": user.to_dict()})
+
+
+# ---------------------------------------------------------------------------
+# Audit export (Admin only) - "logs exportable for audit purposes"
+# ---------------------------------------------------------------------------
+_EXPORTS = {
+    "access-logs": (
+        lambda: AccessLog.query.order_by(AccessLog.timestamp.desc()).all(),
+        ["timestamp", "username", "action", "resource", "status", "ip_address"],
+    ),
+    "login-history": (
+        lambda: LoginHistory.query.order_by(LoginHistory.login_time.desc()).all(),
+        ["login_time", "username", "status", "failure_reason", "ip_address"],
+    ),
+    "site-access": (
+        lambda: SiteAccess.query.order_by(SiteAccess.access_time.desc()).all(),
+        ["access_time", "method", "page_accessed", "ip_address", "status", "user_agent"],
+    ),
+}
+
+
+@admin_bp.route("/api/export/<dataset>", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def export_csv(dataset):
+    """Stream any audit dataset as a downloadable CSV file."""
+    spec = _EXPORTS.get(dataset)
+    if not spec:
+        return jsonify({"error": f"Unknown dataset. Use one of {list(_EXPORTS)}"}), 404
+
+    fetch, fields = spec
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    for row in fetch():
+        writer.writerow(row.to_dict())
+
+    record_access(get_jwt_identity(), "EXPORT", dataset, "SUCCESS")
+    stamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    return Response(
+        buffer.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": f"attachment; filename={dataset}-{stamp}.csv"
+        },
+    )

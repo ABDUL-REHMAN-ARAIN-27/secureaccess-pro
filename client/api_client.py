@@ -121,3 +121,15 @@ class ApiClient:
 
     def unlock(self, user_id):
         return self._request("POST", f"/api/users/{user_id}/unlock")
+
+    def export_csv(self, dataset):
+        """Return raw CSV text for an audit dataset (access-logs, login-history,
+        site-access)."""
+        url = f"{self.base_url}/api/export/{dataset}"
+        try:
+            resp = requests.get(url, headers=self._headers(), timeout=TIMEOUT)
+        except requests.RequestException as exc:
+            raise ApiError(0, f"Cannot reach server: {exc}")
+        if not resp.ok:
+            raise ApiError(resp.status_code, "Export failed")
+        return resp.text

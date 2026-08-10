@@ -135,6 +135,17 @@ lifetime, TOTP window, lockout policy, or to point at **PostgreSQL** via
 | `GET` | `/api/users` | Admin | List users |
 | `PUT` | `/api/users/<id>/role` | Admin | Change a user's role |
 | `POST` | `/api/users/<id>/unlock` | Admin | Clear a lockout |
+| `GET` | `/api/export/<dataset>` | Admin | Download audit CSV (`access-logs` / `login-history` / `site-access`) |
+
+## Tests
+
+```bash
+cd backend
+python -m pytest tests/ -q
+```
+
+The suite covers MFA (password + TOTP), the RBAC matrix for each role,
+brute-force lockout after 3 failed attempts, and admin-only CSV export.
 
 ---
 
