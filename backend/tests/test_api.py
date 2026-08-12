@@ -60,10 +60,49 @@ def test_viewer_role_matrix(client, totp_for):
     assert client.get("/api/protected/documents", headers=h).status_code == 200  # allowed
     assert client.get("/api/protected/hr", headers=h).status_code == 403         # denied
     assert client.get("/api/protected/finance", headers=h).status_code == 403    # denied
+    assert client.get("/api/protected/patients", headers=h).status_code == 403   # denied
+
+
+def test_patient_records_access(client, totp_for):
+    # Admin and User can read patient records; Viewer cannot.
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    user = auth_header(token_for(client, totp_for, "user", "User@123"))
+    assert client.get("/api/protected/patients", headers=admin).status_code == 200
+    resp = client.get("/api/protected/patients", headers=user)
+    assert resp.status_code == 200
+    assert "patients" in resp.get_json()["data"]
 
 
 def test_protected_route_requires_token(client):
     assert client.get("/api/protected/hr").status_code == 401
+
+
+# --------------------------------------------------------------------------- #
+# Email OTP second factor
+# --------------------------------------------------------------------------- #
+def test_email_otp_login(client):
+    # Request an OTP (dev mode returns the code since no SMTP is configured).
+    resp = client.post("/api/request-otp",
+                       json={"username": "admin", "password": "Admin@123"})
+    assert resp.status_code == 200
+    code = resp.get_json()["dev_code"]
+
+    # Logging in with the emailed code (no TOTP) issues a token.
+    ok = client.post("/api/login",
+                     json={"username": "admin", "password": "Admin@123", "tfa_code": code})
+    assert ok.status_code == 200
+
+    # The code is one-time: reusing it fails.
+    again = client.post("/api/login",
+                        json={"username": "admin", "password": "Admin@123", "tfa_code": code})
+    assert again.status_code == 401
+
+
+def test_request_otp_does_not_leak_on_wrong_password(client):
+    resp = client.post("/api/request-otp",
+                       json={"username": "admin", "password": "wrong"})
+    assert resp.status_code == 200
+    assert "dev_code" not in resp.get_json()  # no code generated for bad credentials
 
 
 # --------------------------------------------------------------------------- #

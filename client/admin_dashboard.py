@@ -66,15 +66,33 @@ class AdminDashboard:
 
         self.e_user = self._field(card, "Username")
         self.e_pass = self._field(card, "Password", show="*")
-        self.e_totp = self._field(card, "6-digit MFA code (TOTP)")
+        self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)")
 
+        tk.Button(card, text="✉  Email me a code", font=("Segoe UI", 10, "bold"),
+                  bg=FIELD, fg=TEXT, relief="flat", padx=10, pady=6, cursor="hand2",
+                  command=self.do_request_otp).pack(fill="x", pady=(8, 0))
         tk.Button(card, text="Authenticate", font=("Segoe UI", 12, "bold"), bg=ACCENT,
                   fg="white", relief="flat", padx=10, pady=9, cursor="hand2",
-                  command=self.do_login).pack(fill="x", pady=(20, 6))
+                  command=self.do_login).pack(fill="x", pady=(10, 6))
         self.root.bind("<Return>", lambda _e: self.do_login())
 
-        tk.Label(self.root, text="Admin:  Abdul Rehman / AbdulRehman2711   •   MFA via  python backend/show_code.py \"Abdul Rehman\"",
+        tk.Label(self.root, text="Admin:  Abdul Rehman / AbdulRehman2711   •   code: click 'Email me a code' or  python backend/show_code.py \"Abdul Rehman\"",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(side="bottom", pady=18)
+
+    def do_request_otp(self):
+        u, p = self.e_user.get().strip(), self.e_pass.get()
+        if not u or not p:
+            messagebox.showwarning("Missing info", "Enter your username and password first.")
+            return
+        try:
+            data = self.api.request_otp(u, p)
+        except ApiError as exc:
+            messagebox.showerror("Could not send code", exc.message)
+            return
+        if data.get("dev_code"):
+            self.e_totp.delete(0, "end")
+            self.e_totp.insert(0, data["dev_code"])
+        messagebox.showinfo("Login code", data.get("message", "A code has been sent."))
 
     def _field(self, parent, label, show=None):
         tk.Label(parent, text=label, font=("Segoe UI", 11), bg=PANEL, fg=MUTED,

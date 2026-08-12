@@ -71,6 +71,13 @@ class ApiClient:
         self.role = data["role"]
         return data
 
+    def request_otp(self, username, password):
+        """Ask the server to email a one-time login code."""
+        return self._request(
+            "POST", "/api/request-otp",
+            json={"username": username, "password": password},
+        )
+
     def register(self, username, email, password, confirm_password):
         return self._request(
             "POST",
@@ -94,6 +101,9 @@ class ApiClient:
 
     def open_finance(self):
         return self._request("GET", "/api/protected/finance")
+
+    def open_patients(self):
+        return self._request("GET", "/api/protected/patients")
 
     def open_documents(self):
         return self._request("GET", "/api/protected/documents")

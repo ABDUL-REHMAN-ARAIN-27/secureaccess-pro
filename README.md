@@ -58,6 +58,7 @@ secureaccess-pro/
 │   ├── data/                # confidential data behind the gateway (synthetic)
 │   │   ├── hr/employees.json
 │   │   ├── finance/financials.json
+│   │   ├── patients/patients.json
 │   │   └── documents/*.txt
 │   └── requirements.txt
 ├── client/                  # Tkinter desktop GUIs
@@ -115,6 +116,28 @@ python admin_dashboard.py   # admin security dashboard (Admin login only)
 
 ---
 
+## Multi-factor authentication (email OTP + TOTP)
+
+Login requires a second factor. You can use **either**:
+
+- **Email OTP** — click **"Email me a code"** on the login screen (or call
+  `POST /api/request-otp`). A 6-digit code is emailed to the user's registered
+  address and is valid for 5 minutes, one-time use.
+- **Authenticator TOTP** — the code from an authenticator app / `show_code.py`.
+
+**Enabling real email (Gmail):** set these in `backend/.env` —
+
+```
+SMTP_USER=your-gmail@gmail.com
+SMTP_PASSWORD=your-16-char-app-password   # Google Account > Security > App passwords
+SMTP_FROM=your-gmail@gmail.com
+```
+
+> Use a Gmail **App Password**, not your normal password (requires 2-Step
+> Verification on the Google account). Without SMTP configured, the system runs
+> in **dev mode**: the code is printed to the server console and shown in the
+> app so it stays demoable.
+
 ## Configuration
 
 The backend runs on **SQLite** with zero configuration. Copy
@@ -128,10 +151,12 @@ lifetime, TOTP window, lockout policy, or to point at **PostgreSQL** via
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/login` | — | Password + TOTP → JWT |
+| `POST` | `/api/login` | — | Password + OTP (email or TOTP) → JWT |
+| `POST` | `/api/request-otp` | — | Email a one-time login code to the user |
 | `POST` | `/api/register` | — | Self-service signup (defaults to Viewer) |
 | `GET` | `/api/protected/hr` | Admin, User | HR Portal |
 | `GET` | `/api/protected/finance` | Admin | Finance Dashboard |
+| `GET` | `/api/protected/patients` | Admin, User | Patient Records (health data) |
 | `GET` | `/api/protected/documents` | Admin, User, Viewer | Document Manager |
 | `GET` | `/api/logs` | Admin | Access / audit logs |
 | `GET` | `/api/login-history` | Admin | Authentication history |

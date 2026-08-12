@@ -36,6 +36,10 @@ class User(db.Model):
     failed_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
 
+    # Email OTP (second factor delivered to the registered email).
+    email_otp_hash = db.Column(db.String(255), nullable=True)
+    email_otp_expires = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # ------------------------------------------------------------------ #
@@ -76,6 +80,36 @@ class User(db.Model):
         return pyotp.TOTP(self.totp_secret, interval=interval).provisioning_uri(
             name=self.username, issuer_name=issuer
         )
+
+    # ------------------------------------------------------------------ #
+    # Email OTP helpers (bcrypt-hashed, time-limited)
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def generate_otp(length: int = 6) -> str:
+        import secrets
+        return "".join(secrets.choice("0123456789") for _ in range(length))
+
+    def set_email_otp(self, code: str, expires_minutes: int = 5) -> None:
+        self.email_otp_hash = bcrypt.hashpw(
+            code.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+        self.email_otp_expires = datetime.utcnow() + timedelta(minutes=expires_minutes)
+
+    def verify_email_otp(self, code: str) -> bool:
+        if not self.email_otp_hash or not self.email_otp_expires:
+            return False
+        if self.email_otp_expires < datetime.utcnow():
+            return False
+        try:
+            return bcrypt.checkpw(
+                str(code).strip().encode("utf-8"), self.email_otp_hash.encode("utf-8")
+            )
+        except (ValueError, AttributeError):
+            return False
+
+    def clear_email_otp(self) -> None:
+        self.email_otp_hash = None
+        self.email_otp_expires = None
 
     # ------------------------------------------------------------------ #
     # Lockout helpers

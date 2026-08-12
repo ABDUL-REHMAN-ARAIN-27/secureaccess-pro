@@ -16,10 +16,53 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token
 
 from extensions import db
+from mailer import send_otp_email
 from models import User, LoginHistory, ROLE_VIEWER
 from security import client_ip, record_access
 
 auth_bp = Blueprint("auth", __name__)
+
+
+@auth_bp.route("/api/request-otp", methods=["POST"])
+def request_otp():
+    """Verify the password, then email a one-time code to the user's registered
+    address. The JWT is only issued later once this code is submitted to /login.
+    """
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    user = User.query.filter_by(username=username).first()
+    # Do not reveal whether the account exists / password is right.
+    if not user or user.is_locked() or not user.check_password(password):
+        return jsonify({"message": "If the credentials are valid, a code has been sent."}), 200
+
+    cfg = current_app.config
+    code = User.generate_otp(cfg["OTP_LENGTH"])
+    user.set_email_otp(code, cfg["OTP_EXPIRES_MINUTES"])
+    db.session.commit()
+
+    delivered, dev_code = send_otp_email(user.email, code)
+    record_access(username, "OTP_REQUEST", user.email or "", "SENT")
+
+    resp = {
+        "message": f"A login code was sent to {_mask_email(user.email)}.",
+        "delivered": delivered,
+        "expires_minutes": cfg["OTP_EXPIRES_MINUTES"],
+    }
+    # Dev mode only (no SMTP configured): surface the code so it stays demoable.
+    if dev_code is not None:
+        resp["dev_code"] = dev_code
+        resp["message"] += " (DEV MODE: email not configured — code shown for testing)"
+    return jsonify(resp), 200
+
+
+def _mask_email(email):
+    if not email or "@" not in email:
+        return "your email"
+    name, domain = email.split("@", 1)
+    head = name[:2] if len(name) > 2 else name[:1]
+    return f"{head}***@{domain}"
 
 
 def _log_login(username, status, reason=None):
@@ -76,19 +119,23 @@ def login():
         record_access(username, "LOGIN", "SYSTEM", "FAILED")
         return jsonify({"error": "Invalid credentials"}), 401
 
-    # Factor 2: TOTP.
-    if not user.verify_totp(
+    # Factor 2: the emailed OTP, or an authenticator-app TOTP (either is accepted
+    # so the system works whether or not SMTP is configured).
+    ok_email = user.verify_email_otp(totp_code)
+    ok_totp = user.verify_totp(
         totp_code,
         interval=cfg["TOTP_INTERVAL"],
         valid_window=cfg["TOTP_VALID_WINDOW"],
-    ):
+    )
+    if not (ok_email or ok_totp):
         user.register_failure(cfg["MAX_FAILED_ATTEMPTS"], cfg["LOCKOUT_MINUTES"])
         db.session.commit()
         _log_login(username, "FAILED", "Invalid 2FA code")
         record_access(username, "LOGIN", "SYSTEM", "FAILED")
         return jsonify({"error": "Invalid 2FA code"}), 401
 
-    # Success — reset failure counter and issue a short-lived token.
+    # Success — clear the one-time email code, reset failures, issue the token.
+    user.clear_email_otp()
     user.reset_failures()
     db.session.commit()
 

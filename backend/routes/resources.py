@@ -41,6 +41,17 @@ def finance_dashboard():
     })
 
 
+@resources_bp.route("/api/protected/patients", methods=["GET"])
+@roles_required(ROLE_ADMIN, ROLE_USER)
+def patient_records():
+    record_access(get_jwt_identity(), "ACCESS", "Patient Records", "GRANTED")
+    return jsonify({
+        "message": "Welcome to Patient Records",
+        "resource": "Patient Records",
+        "data": datastore.patients_data(),
+    })
+
+
 @resources_bp.route("/api/protected/documents", methods=["GET"])
 @roles_required(ROLE_ADMIN, ROLE_USER, ROLE_VIEWER)
 def document_manager():

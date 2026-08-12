@@ -32,9 +32,9 @@ class UserApp:
         self.root = root
         self.api = ApiClient()
         self.root.title("SecureAccess Pro")
-        self.root.geometry("980x680")
+        self.root.geometry("1000x820")
         self.root.configure(bg=BG)
-        self.root.minsize(860, 620)
+        self.root.minsize(900, 720)
         self.show_login()
 
     # ------------------------------------------------------------------ #
@@ -64,23 +64,28 @@ class UserApp:
 
         self.e_user = self._field(card, "Username", 1)
         self.e_pass = self._field(card, "Password", 2, show="*")
-        self.e_totp = self._field(card, "6-digit MFA code (TOTP)", 3)
+        self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)", 3)
+
+        otp_btn = tk.Button(card, text="✉  Email me a code", font=("Segoe UI", 10, "bold"),
+                            bg=FIELD, fg=TEXT, activebackground=MINT, relief="flat",
+                            padx=10, pady=6, cursor="hand2", command=self.do_request_otp)
+        otp_btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
 
         btn = tk.Button(card, text="Verify & Sign In", font=("Segoe UI", 12, "bold"),
                         bg=TEAL, fg="white", activebackground=MINT, activeforeground="white",
                         relief="flat", padx=10, pady=9, cursor="hand2", command=self.do_login)
-        btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(22, 8))
+        btn.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(10, 8))
 
         link = tk.Label(card, text="New here?  Create an account", font=("Segoe UI", 10, "underline"),
                         bg=CARD, fg=MINT, cursor="hand2")
-        link.grid(row=5, column=0, columnspan=2)
+        link.grid(row=6, column=0, columnspan=2)
         link.bind("<Button-1>", lambda _e: self.show_register())
 
         self.root.bind("<Return>", lambda _e: self.do_login())
 
         tk.Label(self.root,
                  text="Accounts:  Abdul Rehman / AbdulRehman2711   •   user / User@123   •   viewer / Viewer@123\n"
-                      "Get the current MFA code with:  python backend/show_code.py <username>",
+                      "Login code: click 'Email me a code' (emailed), or use  python backend/show_code.py <username>",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED, justify="center").pack(side="bottom", pady=16)
 
     def show_register(self):
@@ -120,12 +125,30 @@ class UserApp:
         return entry
 
     # ------------------------------------------------------------------ #
+    def do_request_otp(self):
+        u = self.e_user.get().strip()
+        p = self.e_pass.get()
+        if not u or not p:
+            messagebox.showwarning("Missing info", "Enter your username and password first.")
+            return
+        try:
+            data = self.api.request_otp(u, p)
+        except ApiError as exc:
+            messagebox.showerror("Could not send code", exc.message)
+            return
+        msg = data.get("message", "A code has been sent.")
+        if data.get("dev_code"):
+            # Dev mode (no SMTP configured) — prefill the code for convenience.
+            self.e_totp.delete(0, "end")
+            self.e_totp.insert(0, data["dev_code"])
+        messagebox.showinfo("Login code", msg)
+
     def do_login(self):
         u = self.e_user.get().strip()
         p = self.e_pass.get()
         t = self.e_totp.get().strip()
         if not u or not p or not t:
-            messagebox.showwarning("Missing info", "Enter username, password and MFA code.")
+            messagebox.showwarning("Missing info", "Enter username, password and the login code.")
             return
         try:
             data = self.api.login(u, p, t)
@@ -185,14 +208,19 @@ class UserApp:
              self.open_hr, {"Admin", "User"}),
             ("\U0001F4B0", "Finance Dashboard", "Revenue, expenses & invoices",
              self.open_finance, {"Admin"}),
+            ("\U0001F3E5", "Patient Records", "Confidential patient health data",
+             self.open_patients, {"Admin", "User"}),
             ("\U0001F4C1", "Document Manager", "Shared documents (read access)",
              self.open_documents, {"Admin", "User", "Viewer"}),
         ]
         visible = [a for a in apps if role in a[4]]
+        per_row = 3
         for i, (icon, title, desc, cmd, _roles) in enumerate(visible):
+            r, c = divmod(i, per_row)
             self._app_tile(grid, icon, title, desc, cmd).grid(
-                row=0, column=i, padx=12, pady=14, sticky="nsew")
-            grid.columnconfigure(i, weight=1)
+                row=r, column=c, padx=12, pady=14, sticky="nsew")
+        for c in range(min(len(visible), per_row)):
+            grid.columnconfigure(c, weight=1)
 
         self.result = tk.Text(self.root, height=8, bg=CARD, fg=TEXT, relief="flat",
                               font=("Consolas", 10), padx=14, pady=12, wrap="word")
@@ -270,6 +298,9 @@ class UserApp:
 
     def open_finance(self):
         self._open("Finance Dashboard", self.api.open_finance)
+
+    def open_patients(self):
+        self._open("Patient Records", self.api.open_patients)
 
     def open_documents(self):
         self._open("Document Manager", self.api.open_documents)
