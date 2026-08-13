@@ -300,7 +300,31 @@ class UserApp:
         self._open("Finance Dashboard", self.api.open_finance)
 
     def open_patients(self):
-        self._open("Patient Records", self.api.open_patients)
+        # Patient list has its own response shape (summary + patients); render a
+        # read-only overview. Write actions are Admin-only (admin dashboard).
+        try:
+            data = self.api.open_patients()
+        except ApiError as exc:
+            msg = ("Your role does not permit this application.\n"
+                   "This denial has been logged on the admin dashboard."
+                   if exc.status == 403 else exc.message)
+            self._show_result("Patient Records", False, msg)
+            return
+        s = data.get("summary", {})
+        patients = data.get("patients", [])
+        lines = [
+            data.get("classification", ""),
+            f"Total: {s.get('total_patients', len(patients))}   "
+            f"Critical: {s.get('critical', 0)}   Serious: {s.get('serious', 0)}   "
+            f"ICU: {s.get('in_icu', 0)}",
+            "",
+        ]
+        for p in patients[:12]:
+            lines.append(f"• {p['patient_id']}  {p['name']}  ({p['age']}/{p['gender']})  "
+                         f"{p['diagnosis']}  [{p['severity']}] — {p['department']}")
+        if len(patients) > 12:
+            lines.append(f"...and {len(patients) - 12} more (read-only for your role)")
+        self._show_result("Patient Records", True, "\n".join(lines))
 
     def open_documents(self):
         self._open("Document Manager", self.api.open_documents)

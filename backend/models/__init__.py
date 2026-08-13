@@ -2,6 +2,7 @@
 
 from .user import User, ROLES, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
 from .log import AccessLog, LoginHistory, SiteAccess
+from .patient import Patient, SEVERITIES, STATUSES
 
 __all__ = [
     "User",
@@ -12,4 +13,7 @@ __all__ = [
     "AccessLog",
     "LoginHistory",
     "SiteAccess",
+    "Patient",
+    "SEVERITIES",
+    "STATUSES",
 ]

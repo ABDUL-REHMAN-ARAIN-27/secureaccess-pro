@@ -27,6 +27,7 @@ policy, and every action is logged to a real-time security dashboard.
 | **Zero Trust monitoring** | Every request tracked; access decisions logged GRANTED/DENIED |
 | **Real-time dashboard** | Admin GUI with KPI tiles + auto-refreshing logs (< 5s) |
 | **Two GUIs** | End-user application + specialised admin security dashboard |
+| **Patient Records (CRUD)** | 55 seeded records; read for Admin/User, **create/update/delete Admin-only** |
 
 ### RBAC Role-Permission Matrix
 
@@ -58,8 +59,8 @@ secureaccess-pro/
 │   ├── data/                # confidential data behind the gateway (synthetic)
 │   │   ├── hr/employees.json
 │   │   ├── finance/financials.json
-│   │   ├── patients/patients.json
 │   │   └── documents/*.txt
+│   ├── patient_seed.py      # generates 55 synthetic patient records
 │   └── requirements.txt
 ├── client/                  # Tkinter desktop GUIs
 │   ├── api_client.py        # shared REST client
@@ -156,7 +157,11 @@ lifetime, TOTP window, lockout policy, or to point at **PostgreSQL** via
 | `POST` | `/api/register` | — | Self-service signup (defaults to Viewer) |
 | `GET` | `/api/protected/hr` | Admin, User | HR Portal |
 | `GET` | `/api/protected/finance` | Admin | Finance Dashboard |
-| `GET` | `/api/protected/patients` | Admin, User | Patient Records (health data) |
+| `GET` | `/api/protected/patients` | Admin, User | List patient records (55 seeded) |
+| `GET` | `/api/protected/patients/<pid>` | Admin, User | Read one patient |
+| `POST` | `/api/protected/patients` | **Admin only** | Create a patient |
+| `PUT` | `/api/protected/patients/<pid>` | **Admin only** | Update a patient |
+| `DELETE` | `/api/protected/patients/<pid>` | **Admin only** | Delete a patient |
 | `GET` | `/api/protected/documents` | Admin, User, Viewer | Document Manager |
 | `GET` | `/api/logs` | Admin | Access / audit logs |
 | `GET` | `/api/login-history` | Admin | Authentication history |

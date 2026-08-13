@@ -70,7 +70,38 @@ def test_patient_records_access(client, totp_for):
     assert client.get("/api/protected/patients", headers=admin).status_code == 200
     resp = client.get("/api/protected/patients", headers=user)
     assert resp.status_code == 200
-    assert "patients" in resp.get_json()["data"]
+    assert "patients" in resp.get_json()
+
+
+def test_patient_crud_admin_only(client, totp_for):
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    user = auth_header(token_for(client, totp_for, "user", "User@123"))
+    viewer = auth_header(token_for(client, totp_for, "viewer", "Viewer@123"))
+    new = {"name": "Test Case", "age": 50, "gender": "M", "diagnosis": "Sepsis",
+           "severity": "Critical", "department": "ICU", "status": "ICU"}
+
+    # Non-admins cannot create/update/delete.
+    assert client.post("/api/protected/patients", json=new, headers=user).status_code == 403
+    assert client.post("/api/protected/patients", json=new, headers=viewer).status_code == 403
+
+    # Admin can create.
+    created = client.post("/api/protected/patients", json=new, headers=admin)
+    assert created.status_code == 201
+    pid = created.get_json()["patient"]["patient_id"]
+
+    # Non-admin update/delete blocked; admin update/delete allowed.
+    assert client.put(f"/api/protected/patients/{pid}",
+                      json={"severity": "Stable"}, headers=user).status_code == 403
+    assert client.delete(f"/api/protected/patients/{pid}", headers=viewer).status_code == 403
+    assert client.put(f"/api/protected/patients/{pid}",
+                      json={"severity": "Stable"}, headers=admin).status_code == 200
+    assert client.delete(f"/api/protected/patients/{pid}", headers=admin).status_code == 200
+
+
+def test_patient_seed_has_many_records(client, totp_for):
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    body = client.get("/api/protected/patients", headers=admin).get_json()
+    assert body["summary"]["total_patients"] >= 50
 
 
 def test_protected_route_requires_token(client):

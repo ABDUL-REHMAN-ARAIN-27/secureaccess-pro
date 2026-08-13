@@ -184,8 +184,10 @@ class AdminDashboard:
                                       ("Time", "User", "Status", "Reason", "IP"))
         self.tree_site = self._table(nb, "Site Access",
                                      ("Time", "Method", "Path", "IP", "User-Agent"))
+        self._build_patients_tab(nb)
         self._build_users_tab(nb)
 
+        self.refresh_patients()
         self.refresh()  # kicks off the auto-refresh loop
 
     def _kpi_tile(self, parent, label, color, col):
@@ -211,6 +213,159 @@ class AdminDashboard:
         tree.tag_configure("failed", foreground=WARN)
         tree.tag_configure("granted", foreground=OK)
         return tree
+
+    # ------------------------------------------------------------------ #
+    # Patients tab (Admin CRUD — create/update/delete)
+    # ------------------------------------------------------------------ #
+    def _build_patients_tab(self, notebook):
+        frame = tk.Frame(notebook, bg=BG, padx=10, pady=10)
+        notebook.add(frame, text="Patients (CRUD)")
+
+        bar = tk.Frame(frame, bg=BG)
+        bar.pack(fill="x", pady=(0, 8))
+        self.patients_count = tk.Label(bar, text="Patient Records", font=("Segoe UI", 11, "bold"),
+                                       bg=BG, fg=TEXT)
+        self.patients_count.pack(side="left")
+        tk.Button(bar, text="🗑 Delete", font=("Segoe UI", 10, "bold"), bg=DANGER, fg="white",
+                  relief="flat", padx=10, pady=5, cursor="hand2",
+                  command=self.delete_patient).pack(side="right", padx=4)
+        tk.Button(bar, text="✎ Edit", font=("Segoe UI", 10, "bold"), bg=WARN, fg="white",
+                  relief="flat", padx=10, pady=5, cursor="hand2",
+                  command=self.edit_patient).pack(side="right", padx=4)
+        tk.Button(bar, text="+ Add Patient", font=("Segoe UI", 10, "bold"), bg=OK, fg="white",
+                  relief="flat", padx=10, pady=5, cursor="hand2",
+                  command=self.add_patient).pack(side="right", padx=4)
+
+        cols = ("PID", "Name", "Age", "Gender", "Diagnosis", "Severity", "Department", "Status")
+        wrap = tk.Frame(frame, bg=BG)
+        wrap.pack(fill="both", expand=True)
+        self.tree_patients = ttk.Treeview(wrap, columns=cols, show="headings")
+        widths = (70, 130, 45, 60, 190, 80, 120, 90)
+        for c, w in zip(cols, widths):
+            self.tree_patients.heading(c, text=c)
+            self.tree_patients.column(c, anchor="w", width=w)
+        vsb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree_patients.yview)
+        self.tree_patients.configure(yscrollcommand=vsb.set)
+        self.tree_patients.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        self.tree_patients.tag_configure("critical", foreground=DANGER)
+        self.tree_patients.tag_configure("serious", foreground=WARN)
+        self.tree_patients.bind("<Double-1>", lambda _e: self.edit_patient())
+
+    def refresh_patients(self):
+        try:
+            data = self.api.open_patients()
+        except ApiError:
+            return
+        rows = data.get("patients", [])
+        self._patient_index = {}
+        self.tree_patients.delete(*self.tree_patients.get_children())
+        for p in rows:
+            tag = p["severity"].lower() if p["severity"] in ("Critical", "Serious") else ""
+            iid = self.tree_patients.insert(
+                "", "end",
+                values=(p["patient_id"], p["name"], p["age"], p["gender"],
+                        p["diagnosis"], p["severity"], p["department"], p["status"]),
+                tags=(tag,) if tag else ())
+            self._patient_index[iid] = p
+        s = data.get("summary", {})
+        self.patients_count.configure(
+            text=f"Patient Records — {s.get('total_patients', len(rows))} total   "
+                 f"(Critical {s.get('critical', 0)} · Serious {s.get('serious', 0)} · ICU {s.get('in_icu', 0)})")
+
+    def _selected_patient(self):
+        sel = self.tree_patients.selection()
+        if not sel:
+            messagebox.showinfo("No selection", "Select a patient in the table first.")
+            return None
+        return self._patient_index.get(sel[0])
+
+    def add_patient(self):
+        self._patient_dialog(None)
+
+    def edit_patient(self):
+        p = self._selected_patient()
+        if p:
+            self._patient_dialog(p)
+
+    def delete_patient(self):
+        p = self._selected_patient()
+        if not p:
+            return
+        if not messagebox.askyesno("Confirm delete",
+                                   f"Delete patient {p['patient_id']} — {p['name']}?\n"
+                                   "This cannot be undone."):
+            return
+        try:
+            self.api.delete_patient(p["patient_id"])
+        except ApiError as exc:
+            messagebox.showerror("Delete failed", exc.message)
+            return
+        self.refresh_patients()
+
+    def _patient_dialog(self, patient):
+        """Modal form for creating (patient=None) or editing a patient."""
+        win = tk.Toplevel(self.root)
+        win.title("Add Patient" if patient is None else f"Edit {patient['patient_id']}")
+        win.configure(bg=PANEL)
+        win.geometry("420x560")
+        win.transient(self.root)
+        win.grab_set()
+
+        tk.Label(win, text=("New Patient Record" if patient is None
+                            else f"Edit {patient['patient_id']}"),
+                 font=("Segoe UI", 14, "bold"), bg=PANEL, fg=TEXT).pack(pady=(16, 10))
+
+        fields = [
+            ("name", "Name", "entry"),
+            ("age", "Age", "entry"),
+            ("gender", "Gender", ("M", "F")),
+            ("blood_group", "Blood Group", ("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")),
+            ("diagnosis", "Diagnosis", "entry"),
+            ("severity", "Severity", ("Critical", "Serious", "Moderate", "Stable")),
+            ("department", "Department", "entry"),
+            ("attending", "Attending Doctor", "entry"),
+            ("status", "Status", ("ICU", "Admitted", "Outpatient", "Discharged")),
+            ("contact", "Contact", "entry"),
+        ]
+        vars_ = {}
+        body = tk.Frame(win, bg=PANEL, padx=24)
+        body.pack(fill="both", expand=True)
+        for key, label, kind in fields:
+            tk.Label(body, text=label, font=("Segoe UI", 10), bg=PANEL,
+                     fg=MUTED, anchor="w").pack(fill="x", pady=(6, 1))
+            var = tk.StringVar(value=str(patient[key]) if patient and patient.get(key) is not None else "")
+            vars_[key] = var
+            if kind == "entry":
+                tk.Entry(body, textvariable=var, font=("Segoe UI", 11), bg=FIELD, fg=TEXT,
+                         insertbackground=TEXT, relief="flat").pack(fill="x", ipady=4)
+            else:
+                ttk.Combobox(body, textvariable=var, values=list(kind),
+                             state="readonly").pack(fill="x")
+
+        def save():
+            payload = {k: v.get().strip() for k, v in vars_.items()}
+            payload = {k: v for k, v in payload.items() if v != ""}
+            if payload.get("age"):
+                try:
+                    payload["age"] = int(payload["age"])
+                except ValueError:
+                    messagebox.showerror("Invalid", "Age must be a number.", parent=win)
+                    return
+            try:
+                if patient is None:
+                    self.api.create_patient(payload)
+                else:
+                    self.api.update_patient(patient["patient_id"], payload)
+            except ApiError as exc:
+                messagebox.showerror("Save failed", exc.message, parent=win)
+                return
+            win.destroy()
+            self.refresh_patients()
+
+        tk.Button(win, text="Save", font=("Segoe UI", 12, "bold"), bg=ACCENT, fg="white",
+                  relief="flat", padx=10, pady=8, cursor="hand2", command=save).pack(
+            fill="x", padx=24, pady=(6, 16))
 
     def _build_users_tab(self, notebook):
         frame = tk.Frame(notebook, bg=BG, padx=10, pady=10)

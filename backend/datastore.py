@@ -13,7 +13,6 @@ import os
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 HR_FILE = os.path.join(DATA_DIR, "hr", "employees.json")
 FINANCE_FILE = os.path.join(DATA_DIR, "finance", "financials.json")
-PATIENTS_FILE = os.path.join(DATA_DIR, "patients", "patients.json")
 DOCS_DIR = os.path.join(DATA_DIR, "documents")
 
 
@@ -31,10 +30,6 @@ def hr_data():
 
 def finance_data():
     return _load_json(FINANCE_FILE)
-
-
-def patients_data():
-    return _load_json(PATIENTS_FILE)
 
 
 def list_documents():

@@ -105,6 +105,16 @@ class ApiClient:
     def open_patients(self):
         return self._request("GET", "/api/protected/patients")
 
+    # Patient CRUD (create/update/delete are Admin-only, enforced server-side)
+    def create_patient(self, data):
+        return self._request("POST", "/api/protected/patients", json=data)
+
+    def update_patient(self, pid, data):
+        return self._request("PUT", f"/api/protected/patients/{pid}", json=data)
+
+    def delete_patient(self, pid):
+        return self._request("DELETE", f"/api/protected/patients/{pid}")
+
     def open_documents(self):
         return self._request("GET", "/api/protected/documents")
 

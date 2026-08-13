@@ -14,7 +14,8 @@ import sys
 
 from app import create_app
 from extensions import db
-from models import User, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
+from models import User, Patient, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
+from patient_seed import generate_patients
 
 DEMO_USERS = [
     # username,        email,                          password,          role
@@ -49,6 +50,15 @@ def seed(reset=False):
             created.append((u, password))
 
         db.session.commit()
+
+        # --- Patient records (confidential health data) ---
+        if Patient.query.count() == 0:
+            for p in generate_patients():
+                db.session.add(Patient(**p))
+            db.session.commit()
+            print(f"  + seeded {Patient.query.count()} patient records")
+        else:
+            print(f"  - {Patient.query.count()} patients already present, skipping")
 
         print("\n" + "=" * 68)
         print("SecureAccess Pro - demo accounts")

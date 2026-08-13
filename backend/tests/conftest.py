@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from app import create_app  # noqa: E402
 from config import Config  # noqa: E402
 from extensions import db  # noqa: E402
-from models import User, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER  # noqa: E402
+from models import User, Patient, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER  # noqa: E402
+from patient_seed import generate_patients  # noqa: E402
 
 
 class TestConfig(Config):
@@ -45,6 +46,8 @@ def app():
                      totp_secret=User.new_totp_secret())
             u.set_password(password)
             db.session.add(u)
+        for p in generate_patients():
+            db.session.add(Patient(**p))
         db.session.commit()
     yield app
 

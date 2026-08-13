@@ -75,10 +75,12 @@ def _register_blueprints(app):
     from routes.auth import auth_bp
     from routes.resources import resources_bp
     from routes.admin import admin_bp
+    from routes.patients import patients_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(resources_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(patients_bp)
 
 
 def _register_request_hooks(app):
