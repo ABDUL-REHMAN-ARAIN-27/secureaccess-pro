@@ -136,6 +136,12 @@ class ApiClient:
     def site_access(self, limit=100):
         return self._request("GET", f"/api/site-access?limit={limit}")
 
+    def alerts(self):
+        return self._request("GET", "/api/alerts")
+
+    def verify_audit(self):
+        return self._request("GET", "/api/audit/verify")
+
     def users(self):
         return self._request("GET", "/api/users")
 

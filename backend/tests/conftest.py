@@ -52,6 +52,15 @@ def app():
     yield app
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Clear the in-memory rate limiter between tests so counts don't leak."""
+    import ratelimit
+    ratelimit.reset()
+    yield
+    ratelimit.reset()
+
+
 @pytest.fixture()
 def client(app):
     return app.test_client()

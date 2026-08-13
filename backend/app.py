@@ -28,6 +28,8 @@ _TRACK_SKIP = {
     "admin.get_login_history",
     "admin.get_site_access",
     "admin.get_metrics",
+    "admin.get_alerts",
+    "admin.verify_audit",
 }
 
 

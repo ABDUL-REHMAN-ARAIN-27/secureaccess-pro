@@ -18,12 +18,30 @@ from flask_jwt_extended import create_access_token
 from extensions import db
 from mailer import send_otp_email
 from models import User, LoginHistory, ROLE_VIEWER
+from ratelimit import rate_limited
 from security import client_ip, record_access
 
 auth_bp = Blueprint("auth", __name__)
 
 
+def password_policy_error(password, min_length):
+    """Return a message if the password fails the policy, else None (NIST-style:
+    length + character variety)."""
+    if len(password) < min_length:
+        return f"Password must be at least {min_length} characters"
+    if not any(c.islower() for c in password):
+        return "Password must include a lowercase letter"
+    if not any(c.isupper() for c in password):
+        return "Password must include an uppercase letter"
+    if not any(c.isdigit() for c in password):
+        return "Password must include a digit"
+    if not any(not c.isalnum() for c in password):
+        return "Password must include a special character"
+    return None
+
+
 @auth_bp.route("/api/request-otp", methods=["POST"])
+@rate_limited("otp")
 def request_otp():
     """Verify the password, then email a one-time code to the user's registered
     address. The JWT is only issued later once this code is submitted to /login.
@@ -81,6 +99,7 @@ def _log_login(username, status, reason=None):
 
 
 @auth_bp.route("/api/login", methods=["POST"])
+@rate_limited("login")
 def login():
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
@@ -176,8 +195,9 @@ def register():
         return jsonify({"error": "Username, email and password are required"}), 400
     if password != confirm:
         return jsonify({"error": "Passwords do not match"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    policy_error = password_policy_error(password, current_app.config["PASSWORD_MIN_LENGTH"])
+    if policy_error:
+        return jsonify({"error": policy_error}), 400
     if "@" not in email or "." not in email:
         return jsonify({"error": "Please enter a valid email address"}), 400
     if User.query.filter_by(username=username).first():

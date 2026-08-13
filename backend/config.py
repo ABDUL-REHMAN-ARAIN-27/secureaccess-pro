@@ -58,6 +58,13 @@ class Config:
     MAX_FAILED_ATTEMPTS = int(os.environ.get("MAX_FAILED_ATTEMPTS", "3"))
     LOCKOUT_MINUTES = int(os.environ.get("LOCKOUT_MINUTES", "15"))
 
+    # --- Password policy (enforced on self-registration) ---
+    PASSWORD_MIN_LENGTH = int(os.environ.get("PASSWORD_MIN_LENGTH", "8"))
+
+    # --- API rate limiting (anti-automation / anti-DoS) ---
+    RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "30"))
+    RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60"))
+
     # --- Server ---
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))

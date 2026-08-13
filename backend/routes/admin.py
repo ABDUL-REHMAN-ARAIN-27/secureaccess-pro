@@ -7,11 +7,13 @@ access, aggregate metrics, and user/role management.
 
 import csv
 import io
+from collections import Counter
 from datetime import datetime, timedelta
 
-from flask import Blueprint, Response, jsonify, request
+from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
+from audit import verify_chain
 from extensions import db
 from models import (
     AccessLog,
@@ -50,6 +52,74 @@ def get_site_access():
     limit = request.args.get("limit", 100, type=int)
     rows = SiteAccess.query.order_by(SiteAccess.access_time.desc()).limit(limit).all()
     return jsonify([r.to_dict() for r in rows])
+
+
+@admin_bp.route("/api/audit/verify", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def verify_audit():
+    """Recompute the audit hash-chain and report whether it is intact."""
+    rows = AccessLog.query.order_by(AccessLog.id.asc()).all()
+    return jsonify(verify_chain(rows))
+
+
+@admin_bp.route("/api/alerts", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def get_alerts():
+    """
+    Lightweight anomaly detection over recent activity (SOC-style). Surfaces:
+      - Brute-force: many failed logins for one user in a short window.
+      - Privilege probing: many DENIED access attempts by one user.
+      - Locked accounts.
+    """
+    window = datetime.utcnow() - timedelta(minutes=15)
+    alerts = []
+
+    # Brute-force: >= MAX_FAILED_ATTEMPTS failed logins per user in the window.
+    threshold = current_app.config.get("MAX_FAILED_ATTEMPTS", 3)
+    failed = (
+        LoginHistory.query.filter(
+            LoginHistory.status == "FAILED", LoginHistory.login_time >= window
+        ).all()
+    )
+    per_user = Counter(f.username for f in failed)
+    for username, count in per_user.items():
+        if count >= threshold:
+            alerts.append({
+                "severity": "HIGH",
+                "type": "Brute-force / credential attack",
+                "subject": username or "unknown",
+                "detail": f"{count} failed logins in the last 15 minutes",
+            })
+
+    # Privilege probing: >= 3 DENIED access events per user in the window.
+    denied = (
+        AccessLog.query.filter(
+            AccessLog.status == "DENIED", AccessLog.timestamp >= window
+        ).all()
+    )
+    per_user_denied = Counter(d.username for d in denied)
+    for username, count in per_user_denied.items():
+        if count >= 3:
+            alerts.append({
+                "severity": "MEDIUM",
+                "type": "Possible privilege escalation / probing",
+                "subject": username or "unknown",
+                "detail": f"{count} denied access attempts in the last 15 minutes",
+            })
+
+    # Locked accounts.
+    for u in User.query.filter(User.locked_until > datetime.utcnow()).all():
+        alerts.append({
+            "severity": "MEDIUM",
+            "type": "Account locked",
+            "subject": u.username,
+            "detail": "Account locked after repeated failed logins",
+        })
+
+    order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+    alerts.sort(key=lambda a: order.get(a["severity"], 3))
+    return jsonify({"count": len(alerts), "alerts": alerts,
+                    "generated_at": datetime.utcnow().isoformat()})
 
 
 @admin_bp.route("/api/metrics", methods=["GET"])

@@ -28,6 +28,9 @@ policy, and every action is logged to a real-time security dashboard.
 | **Real-time dashboard** | Admin GUI with KPI tiles + auto-refreshing logs (< 5s) |
 | **Two GUIs** | End-user application + specialised admin security dashboard |
 | **Patient Records (CRUD)** | 55 seeded records; read for Admin/User, **create/update/delete Admin-only** |
+| **Tamper-evident audit log** | SHA-256 hash-chained entries; integrity verification detects any tampering |
+| **Anomaly detection / alerts** | SOC-style alerts: brute-force, privilege probing, account lockouts |
+| **Security hardening** | NIST-style password policy + API rate limiting (429) |
 
 ### RBAC Role-Permission Matrix
 
@@ -167,6 +170,8 @@ lifetime, TOTP window, lockout policy, or to point at **PostgreSQL** via
 | `GET` | `/api/login-history` | Admin | Authentication history |
 | `GET` | `/api/site-access` | Admin | Raw request tracking |
 | `GET` | `/api/metrics` | Admin | Dashboard KPI counters |
+| `GET` | `/api/alerts` | Admin | Real-time security alerts (anomaly detection) |
+| `GET` | `/api/audit/verify` | Admin | Verify the tamper-evident audit chain |
 | `GET` | `/api/users` | Admin | List users |
 | `PUT` | `/api/users/<id>/role` | Admin | Change a user's role |
 | `POST` | `/api/users/<id>/unlock` | Admin | Clear a lockout |

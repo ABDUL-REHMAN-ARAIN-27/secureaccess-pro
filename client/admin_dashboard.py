@@ -143,7 +143,7 @@ class AdminDashboard:
             ("total_logins", "Login Attempts", ACCENT),
             ("failed_logins", "Failed Logins", WARN),
             ("denied_access", "Access Denied", DANGER),
-            ("locked_accounts", "Locked Accounts", DANGER),
+            ("active_alerts", "Active Alerts", DANGER),
             ("granted_access", "Access Granted", OK),
         ]
         for i, (key, label, color) in enumerate(specs):
@@ -178,6 +178,7 @@ class AdminDashboard:
         nb = ttk.Notebook(self.root)
         nb.pack(fill="both", expand=True, padx=16, pady=(6, 16))
 
+        self._build_security_tab(nb)
         self.tree_access = self._table(nb, "Access Logs",
                                        ("Time", "User", "Action", "Resource", "Status", "IP"))
         self.tree_login = self._table(nb, "Login History",
@@ -189,6 +190,66 @@ class AdminDashboard:
 
         self.refresh_patients()
         self.refresh()  # kicks off the auto-refresh loop
+
+    def _build_security_tab(self, notebook):
+        frame = tk.Frame(notebook, bg=BG, padx=10, pady=10)
+        notebook.add(frame, text="🚨 Security Alerts")
+
+        # Audit-integrity badge.
+        self.audit_badge = tk.Label(frame, text="Audit integrity: checking…",
+                                    font=("Segoe UI", 11, "bold"), bg=PANEL, fg=MUTED,
+                                    anchor="w", padx=12, pady=8)
+        self.audit_badge.pack(fill="x", pady=(0, 8))
+
+        tk.Label(frame, text="Real-time anomaly detection (brute-force, privilege probing, lockouts)",
+                 font=("Segoe UI", 10), bg=BG, fg=MUTED, anchor="w").pack(fill="x", pady=(0, 6))
+
+        cols = ("Severity", "Type", "Subject", "Detail")
+        wrap = tk.Frame(frame, bg=BG)
+        wrap.pack(fill="both", expand=True)
+        self.tree_alerts = ttk.Treeview(wrap, columns=cols, show="headings")
+        for c, w in zip(cols, (90, 260, 120, 320)):
+            self.tree_alerts.heading(c, text=c)
+            self.tree_alerts.column(c, anchor="w", width=w)
+        vsb = ttk.Scrollbar(wrap, orient="vertical", command=self.tree_alerts.yview)
+        self.tree_alerts.configure(yscrollcommand=vsb.set)
+        self.tree_alerts.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
+        self.tree_alerts.tag_configure("HIGH", foreground=DANGER)
+        self.tree_alerts.tag_configure("MEDIUM", foreground=WARN)
+        self.no_alerts = tk.Label(frame, text="", font=("Segoe UI", 11),
+                                  bg=BG, fg=OK, anchor="w")
+        self.no_alerts.pack(fill="x", pady=(6, 0))
+
+    def refresh_security(self):
+        # Anomaly alerts
+        try:
+            data = self.api.alerts()
+            alerts = data.get("alerts", [])
+            self.tree_alerts.delete(*self.tree_alerts.get_children())
+            for a in alerts:
+                self.tree_alerts.insert("", "end",
+                    values=(a["severity"], a["type"], a["subject"], a["detail"]),
+                    tags=(a["severity"],))
+            self.no_alerts.configure(
+                text="✓ No active threats detected." if not alerts else "")
+            if "active_alerts" in self.kpi_labels:
+                self.kpi_labels["active_alerts"].configure(text=str(len(alerts)))
+        except ApiError:
+            pass
+        # Audit integrity
+        try:
+            v = self.api.verify_audit()
+            if v.get("intact"):
+                self.audit_badge.configure(
+                    text=f"🔒 Audit integrity: VERIFIED — {v.get('total', 0)} entries, no tampering",
+                    fg=OK)
+            else:
+                self.audit_badge.configure(
+                    text=f"⚠ Audit integrity: TAMPERING DETECTED at entry #{v.get('broken_at')} — {v.get('reason','')}",
+                    fg=DANGER)
+        except ApiError:
+            pass
 
     def _kpi_tile(self, parent, label, color, col):
         card = tk.Frame(parent, bg=PANEL, padx=14, pady=14)
@@ -474,6 +535,7 @@ class AdminDashboard:
                 for r in self.api.site_access(80)
             ])
             self.refresh_users()
+            self.refresh_security()
             self.status_lbl.configure(text="● live", fg=OK)
         except ApiError as exc:
             self.status_lbl.configure(text=f"● {exc.message[:40]}", fg=DANGER)

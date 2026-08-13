@@ -137,6 +137,74 @@ def test_request_otp_does_not_leak_on_wrong_password(client):
 
 
 # --------------------------------------------------------------------------- #
+# Tamper-evident audit log (hash chain)
+# --------------------------------------------------------------------------- #
+def test_audit_chain_intact_then_detects_tampering(client, totp_for, app):
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    # Generate a few audit entries.
+    client.get("/api/protected/hr", headers=admin)
+    client.get("/api/protected/finance", headers=admin)
+
+    intact = client.get("/api/audit/verify", headers=admin).get_json()
+    assert intact["intact"] is True
+
+    # Tamper with a stored log row directly, then re-verify.
+    from extensions import db
+    from models import AccessLog
+    with app.app_context():
+        row = AccessLog.query.order_by(AccessLog.id.asc()).offset(1).first()
+        row.status = "HACKED"
+        db.session.commit()
+
+    broken = client.get("/api/audit/verify", headers=admin).get_json()
+    assert broken["intact"] is False
+    assert broken["broken_at"] is not None
+
+
+# --------------------------------------------------------------------------- #
+# Anomaly detection / security alerts
+# --------------------------------------------------------------------------- #
+def test_alerts_flag_bruteforce(client, totp_for):
+    # Three failed logins should raise a brute-force alert.
+    for _ in range(3):
+        client.post("/api/login",
+                    json={"username": "viewer", "password": "WRONG", "tfa_code": "0"})
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    alerts = client.get("/api/alerts", headers=admin).get_json()["alerts"]
+    types = {a["type"] for a in alerts}
+    assert any("Brute-force" in t for t in types)
+
+
+# --------------------------------------------------------------------------- #
+# Password policy + rate limiting
+# --------------------------------------------------------------------------- #
+def test_password_policy_rejects_weak(client):
+    weak = client.post("/api/register", json={
+        "username": "weaky", "email": "w@x.com",
+        "password": "abcdefg", "confirm_password": "abcdefg"})
+    assert weak.status_code == 400  # too short / missing classes
+
+    strong = client.post("/api/register", json={
+        "username": "strongy", "email": "s@x.com",
+        "password": "Abcdef1@", "confirm_password": "Abcdef1@"})
+    assert strong.status_code == 201
+
+
+def test_rate_limiting_returns_429(client, app):
+    app.config["RATE_LIMIT_MAX"] = 4
+    ok = 0
+    limited = 0
+    for _ in range(7):
+        r = client.post("/api/login",
+                        json={"username": "x", "password": "y", "tfa_code": "0"})
+        if r.status_code == 429:
+            limited += 1
+        else:
+            ok += 1
+    assert ok == 4 and limited == 3
+
+
+# --------------------------------------------------------------------------- #
 # Brute-force lockout
 # --------------------------------------------------------------------------- #
 def test_lockout_after_three_failures(client, totp_for):

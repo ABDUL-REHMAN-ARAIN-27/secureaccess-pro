@@ -23,6 +23,11 @@ class AccessLog(db.Model):
     ip_address = db.Column(db.String(64))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Tamper-evidence: each entry is chained to the previous one's hash, so any
+    # later modification of an earlier row breaks the chain and is detectable.
+    prev_hash = db.Column(db.String(64))
+    entry_hash = db.Column(db.String(64))
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -32,6 +37,7 @@ class AccessLog(db.Model):
             "status": self.status,
             "ip_address": self.ip_address,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "entry_hash": self.entry_hash,
         }
 
 

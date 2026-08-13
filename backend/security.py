@@ -2,11 +2,13 @@
 Shared security helpers: audit logging + role-based access control.
 """
 
+from datetime import datetime
 from functools import wraps
 
 from flask import jsonify, request
 from flask_jwt_extended import verify_jwt_in_request, get_jwt, get_jwt_identity
 
+from audit import compute_entry_hash
 from extensions import db
 from models import AccessLog
 
@@ -20,17 +22,25 @@ def client_ip():
 
 
 def record_access(username, action, resource, status):
-    """Write an entry to the access/audit log stream."""
+    """Write a hash-chained (tamper-evident) entry to the audit log stream."""
     try:
-        db.session.add(
-            AccessLog(
-                username=username,
-                action=action,
-                resource=resource,
-                status=status,
-                ip_address=client_ip(),
-            )
+        ip = client_ip()
+        ts = datetime.utcnow()
+        last = AccessLog.query.order_by(AccessLog.id.desc()).first()
+        prev = last.entry_hash if last and last.entry_hash else "GENESIS"
+        entry = AccessLog(
+            username=username,
+            action=action,
+            resource=resource,
+            status=status,
+            ip_address=ip,
+            timestamp=ts,
+            prev_hash=prev,
         )
+        entry.entry_hash = compute_entry_hash(
+            prev, username, action, resource, status, ip, ts.isoformat()
+        )
+        db.session.add(entry)
         db.session.commit()
     except Exception:  # pragma: no cover - logging must never break a request
         db.session.rollback()
