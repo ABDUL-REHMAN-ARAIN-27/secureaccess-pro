@@ -10,7 +10,9 @@ Run:
     python app.py            # starts on 0.0.0.0:5000 (SQLite by default)
 """
 
-from flask import Flask, jsonify, request
+import os
+
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 from config import Config
@@ -45,30 +47,29 @@ def create_app(config_class=Config):
     _register_request_hooks(app)
     _register_error_handlers(app)
 
+    web_dir = os.path.join(os.path.dirname(__file__), "web")
+
     @app.route("/")
     def home():
-        return jsonify(
-            {
-                "service": "SecureAccess Pro",
-                "description": "Zero Trust Network Access Control System",
-                "status": "running",
-                "endpoints": [
-                    "/api/login",
-                    "/api/register",
-                    "/api/protected/hr",
-                    "/api/protected/finance",
-                    "/api/protected/documents",
-                    "/api/logs",
-                    "/api/login-history",
-                    "/api/site-access",
-                    "/api/metrics",
-                    "/api/users",
-                ],
-            }
-        )
+        # Serve the browser app so the deployed URL opens the login/register UI.
+        return send_from_directory(web_dir, "index.html")
+
+    @app.route("/api/health")
+    def health():
+        return jsonify({"service": "SecureAccess Pro", "status": "running"})
 
     with app.app_context():
         db.create_all()
+
+    # Auto-seed on first startup (demo accounts + patients) so a fresh
+    # deployment is immediately usable. Disable with AUTO_SEED=false.
+    if os.environ.get("AUTO_SEED", "true").lower() == "true":
+        try:
+            from bootstrap import seed_demo, is_empty
+            if is_empty(app):
+                seed_demo(app)
+        except Exception as exc:  # pragma: no cover
+            print(f"Auto-seed skipped: {exc}")
 
     return app
 

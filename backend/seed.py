@@ -13,58 +13,21 @@ Usage:
 import sys
 
 from app import create_app
-from extensions import db
-from models import User, Patient, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
-from patient_seed import generate_patients
-
-DEMO_USERS = [
-    # username,        email,                          password,          role
-    ("Abdul Rehman", "abdulrehmanarainmanni@gmail.com", "AbdulRehman2711", ROLE_ADMIN),
-    ("user",         "user@secureaccess.pro",           "User@123",        ROLE_USER),
-    ("viewer",       "viewer@secureaccess.pro",         "Viewer@123",      ROLE_VIEWER),
-]
+from bootstrap import seed_demo
+from models import User, Patient
 
 
 def seed(reset=False):
     app = create_app()
+    created = seed_demo(app, reset=reset)
+    pwd_by_user = dict(created)
     with app.app_context():
-        if reset:
-            print("Dropping all tables ...")
-            db.drop_all()
-            db.create_all()
-
-        created = []
-        for username, email, password, role in DEMO_USERS:
-            existing = User.query.filter_by(username=username).first()
-            if existing:
-                print(f"  - {username!r} already exists, skipping")
-                continue
-            u = User(
-                username=username,
-                email=email,
-                role=role,
-                totp_secret=User.new_totp_secret(),
-            )
-            u.set_password(password)
-            db.session.add(u)
-            created.append((u, password))
-
-        db.session.commit()
-
-        # --- Patient records (confidential health data) ---
-        if Patient.query.count() == 0:
-            for p in generate_patients():
-                db.session.add(Patient(**p))
-            db.session.commit()
-            print(f"  + seeded {Patient.query.count()} patient records")
-        else:
-            print(f"  - {Patient.query.count()} patients already present, skipping")
-
+        print(f"  + {Patient.query.count()} patient records present")
         print("\n" + "=" * 68)
         print("SecureAccess Pro - demo accounts")
         print("=" * 68)
         for u in User.query.order_by(User.id).all():
-            pwd = next((p for created_u, p in created if created_u.id == u.id), "(unchanged)")
+            pwd = pwd_by_user.get(u.username, "(unchanged)")
             print(f"\nRole     : {u.role}")
             print(f"Username : {u.username}")
             print(f"Password : {pwd}")

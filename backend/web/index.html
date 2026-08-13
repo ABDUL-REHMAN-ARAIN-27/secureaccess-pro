@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecureAccess Pro</title>
+<style>
+  :root{
+    --bg:#0f2027; --card:#16323a; --field:#1f3f49; --teal:#028090; --mint:#02c39a;
+    --text:#eaf4f4; --muted:#9db4b8; --danger:#e63946; --warn:#f39c12; --ok:#2ecc71;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  a{color:var(--mint)}
+  .wrap{max-width:1000px;margin:0 auto;padding:20px}
+  .center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  h1{font-size:28px;margin:0}
+  .sub{color:var(--muted);margin:6px 0 24px}
+  .card{background:var(--card);border-radius:12px;padding:28px;width:100%;max-width:420px}
+  label{display:block;color:var(--muted);font-size:14px;margin:12px 0 4px}
+  input,select{width:100%;padding:10px;border:none;border-radius:6px;background:var(--field);
+    color:var(--text);font-size:15px}
+  button{cursor:pointer;border:none;border-radius:6px;font-weight:700;font-size:15px}
+  .btn{width:100%;padding:12px;background:var(--teal);color:#fff;margin-top:16px}
+  .btn:hover{background:var(--mint)}
+  .btn.alt{background:var(--field);color:var(--text);margin-top:8px}
+  .btn.sm{width:auto;padding:8px 14px;font-size:13px;margin:0}
+  .btn.danger{background:var(--danger)} .btn.ok{background:var(--ok)} .btn.warn{background:var(--warn)}
+  .link{color:var(--mint);text-align:center;display:block;margin-top:14px;cursor:pointer}
+  .msg{padding:10px;border-radius:6px;margin-top:12px;font-size:14px;display:none}
+  .msg.err{background:rgba(230,57,70,.15);color:#ffb3b9;display:block}
+  .msg.ok{background:rgba(46,204,113,.15);color:#aef0c8;display:block}
+  .topbar{display:flex;justify-content:space-between;align-items:center;background:var(--teal);
+    padding:16px 24px;border-radius:0 0 12px 12px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:20px}
+  .tile{background:var(--card);border-radius:12px;padding:22px;text-align:center}
+  .tile .ico{font-size:34px}
+  .tile h3{margin:10px 0 4px}
+  .tile p{color:var(--muted);font-size:13px;min-height:34px;margin:0 0 12px}
+  .panel{background:var(--card);border-radius:12px;padding:18px;margin-top:18px;white-space:pre-wrap;
+    font-family:Consolas,monospace;font-size:13px;max-height:340px;overflow:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #26414a}
+  th{color:var(--muted)}
+  .sev-Critical,.HIGH{color:var(--danger)} .sev-Serious,.MEDIUM{color:var(--warn)}
+  .badge{padding:10px 14px;border-radius:8px;font-weight:700;margin-top:12px}
+  .badge.ok{background:rgba(46,204,113,.15);color:#aef0c8}
+  .badge.bad{background:rgba(230,57,70,.15);color:#ffb3b9}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .hidden{display:none}
+  small.hint{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN ================= -->
+<div id="view-login" class="center">
+  <h1>🔐 SecureAccess Pro</h1>
+  <div class="sub">Zero Trust Network Access • Multi-Factor Authentication</div>
+  <div class="card">
+    <h2 style="margin-top:0">Sign in</h2>
+    <label>Username</label><input id="li-user" autocomplete="username">
+    <label>Password</label><input id="li-pass" type="password" autocomplete="current-password">
+    <label>6-digit code (email OTP or authenticator)</label><input id="li-otp" inputmode="numeric">
+    <button class="btn alt" onclick="requestOtp()">✉ Email me a code</button>
+    <button class="btn" onclick="login()">Verify &amp; Sign In</button>
+    <span class="link" onclick="show('register')">New here? Create an account</span>
+    <div id="li-msg" class="msg"></div>
+  </div>
+  <small class="hint" style="margin-top:16px;text-align:center">
+    Demo: user / User@123 &nbsp;•&nbsp; viewer / Viewer@123
+  </small>
+</div>
+
+<!-- ================= REGISTER ================= -->
+<div id="view-register" class="center hidden">
+  <h1>🔐 SecureAccess Pro</h1>
+  <div class="sub">Create your account (default role: Viewer)</div>
+  <div class="card">
+    <h2 style="margin-top:0">Create account</h2>
+    <label>Username</label><input id="rg-user">
+    <label>Email</label><input id="rg-email" type="email">
+    <label>Password</label><input id="rg-pass" type="password">
+    <small class="hint">Min 8 chars incl. upper, lower, digit &amp; special.</small>
+    <label>Confirm password</label><input id="rg-conf" type="password">
+    <button class="btn" onclick="register()">Create account</button>
+    <span class="link" onclick="show('login')">← Back to sign in</span>
+    <div id="rg-msg" class="msg"></div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div id="view-app" class="hidden">
+  <div class="topbar">
+    <div><strong id="app-title">SecureAccess Pro</strong></div>
+    <div class="row" style="margin:0">
+      <span id="app-who"></span>
+      <button class="btn sm danger" onclick="logout()">Sign out</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div id="admin-bar" class="row hidden">
+      <button class="btn sm" onclick="openMonitoring()">🛡 Security Monitoring</button>
+      <button class="btn sm" onclick="openPatientsAdmin()">🏥 Manage Patients</button>
+    </div>
+    <div class="tiles" id="tiles"></div>
+    <div id="panel" class="panel hidden"></div>
+  </div>
+</div>
+
+<script>
+const API = ""; // same origin
+let token=null, role=null, username=null;
+
+function show(v){
+  for(const id of ["login","register","app"]) document.getElementById("view-"+id).classList.add("hidden");
+  document.getElementById("view-"+v).classList.remove("hidden");
+}
+function msg(id,text,ok){const e=document.getElementById(id);e.textContent=text;e.className="msg "+(ok?"ok":"err");}
+async function api(path,opts={}){
+  opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});
+  if(token) opts.headers["Authorization"]="Bearer "+token;
+  const r=await fetch(API+path,opts);
+  let body={}; try{body=await r.json()}catch(e){}
+  if(!r.ok) throw {status:r.status, message:body.error||body.detail||r.statusText, body};
+  return body;
+}
+
+async function requestOtp(){
+  const u=val("li-user"), p=val("li-pass");
+  if(!u||!p){return msg("li-msg","Enter username and password first.",false);}
+  try{
+    const d=await api("/api/request-otp",{method:"POST",body:JSON.stringify({username:u,password:p})});
+    if(d.dev_code){document.getElementById("li-otp").value=d.dev_code;}
+    msg("li-msg",d.message,true);
+  }catch(e){msg("li-msg",e.message,false);}
+}
+async function login(){
+  try{
+    const d=await api("/api/login",{method:"POST",body:JSON.stringify(
+      {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp")})});
+    token=d.token; role=d.role; username=d.username;
+    enterApp();
+  }catch(e){msg("li-msg",e.message,false);}
+}
+async function register(){
+  try{
+    const d=await api("/api/register",{method:"POST",body:JSON.stringify({
+      username:val("rg-user"),email:val("rg-email"),
+      password:val("rg-pass"),confirm_password:val("rg-conf")})});
+    msg("rg-msg",d.message+" (TOTP secret: "+d.totp_secret+")",true);
+    setTimeout(()=>show("login"),4000);
+  }catch(e){msg("rg-msg",e.message,false);}
+}
+function logout(){token=role=username=null;document.getElementById("li-otp").value="";show("login");}
+
+const APPS=[
+  {ico:"👥",title:"HR Portal",desc:"Employee records & leave",roles:["Admin","User"],path:"/api/protected/hr"},
+  {ico:"💰",title:"Finance Dashboard",desc:"Revenue, expenses & invoices",roles:["Admin"],path:"/api/protected/finance"},
+  {ico:"🏥",title:"Patient Records",desc:"Confidential patient health data",roles:["Admin","User"],path:"/api/protected/patients"},
+  {ico:"📁",title:"Document Manager",desc:"Shared documents (read)",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
+];
+
+function enterApp(){
+  show("app");
+  document.getElementById("app-who").textContent="Signed in as "+username+" ("+role+")";
+  document.getElementById("admin-bar").classList.toggle("hidden", role!=="Admin");
+  const t=document.getElementById("tiles"); t.innerHTML="";
+  APPS.filter(a=>a.roles.includes(role)).forEach(a=>{
+    const d=document.createElement("div"); d.className="tile";
+    d.innerHTML=`<div class="ico">${a.ico}</div><h3>${a.title}</h3><p>${a.desc}</p>`;
+    const b=document.createElement("button"); b.className="btn"; b.textContent="Open";
+    b.onclick=()=>openResource(a); d.appendChild(b); t.appendChild(d);
+  });
+  document.getElementById("panel").classList.add("hidden");
+}
+
+async function openResource(a){
+  const p=document.getElementById("panel"); p.classList.remove("hidden");
+  try{
+    const d=await api(a.path);
+    if(a.title==="Patient Records"){ p.innerHTML=renderPatients(d); }
+    else if(a.title==="Document Manager"){ p.innerHTML=renderDocs(d); }
+    else { p.textContent="✅ ACCESS GRANTED — "+a.title+"\n\n"+pretty(d.data||d); }
+  }catch(e){
+    p.textContent=(e.status===403?"⛔ ACCESS DENIED — your role does not permit this.\nThis denial is logged on the security dashboard.":"Error: "+e.message);
+  }
+}
+function pretty(o,ind=0){
+  const pad="  ".repeat(ind); let s="";
+  if(Array.isArray(o)){o.forEach(v=>{s+=pad+"• "+(typeof v==="object"?Object.entries(v).map(([k,x])=>k+"="+x).join("  "):v)+"\n";});}
+  else if(o&&typeof o==="object"){for(const[k,v]of Object.entries(o)){if(k.startsWith("_"))continue;
+    if(v&&typeof v==="object"){s+=pad+k+":\n"+pretty(v,ind+1);}else{s+=pad+k+": "+v+"\n";}}}
+  else s+=pad+o+"\n";
+  return s;
+}
+function renderPatients(d){
+  const s=d.summary||{};
+  let h=`✅ ${d.classification||"Patient Records"}\nTotal ${s.total_patients} · Critical ${s.critical} · Serious ${s.serious} · ICU ${s.in_icu}\n\n`;
+  h+="<table><tr><th>PID</th><th>Name</th><th>Age</th><th>Diagnosis</th><th>Severity</th><th>Dept</th></tr>";
+  (d.patients||[]).slice(0,40).forEach(p=>{h+=`<tr><td>${p.patient_id}</td><td>${p.name}</td><td>${p.age}</td><td>${p.diagnosis}</td><td class="sev-${p.severity}">${p.severity}</td><td>${p.department}</td></tr>`;});
+  h+="</table>"; return h;
+}
+function renderDocs(d){
+  let h="✅ Document Manager\n\n<table><tr><th>Document</th><th>Size</th></tr>";
+  (d.data.documents||[]).forEach(x=>{h+=`<tr><td>${x.name}</td><td>${x.size_bytes} B</td></tr>`;});
+  return h+"</table>";
+}
+
+/* ---------- Admin: monitoring ---------- */
+async function openMonitoring(){
+  const p=document.getElementById("panel"); p.classList.remove("hidden");
+  try{
+    const [m,al,au]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify")]);
+    let h=`<div class="badge ${au.intact?"ok":"bad"}">🔒 Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING at #"+au.broken_at}</div>`;
+    h+=`\n\nUsers ${m.total_users} · Logins ${m.total_logins} · Failed ${m.failed_logins} · Denied ${m.denied_access} · Locked ${m.locked_accounts}\n\n`;
+    h+=`<strong>🚨 Security Alerts (${al.count})</strong>`;
+    h+="<table><tr><th>Severity</th><th>Type</th><th>Subject</th><th>Detail</th></tr>";
+    al.alerts.forEach(a=>{h+=`<tr><td class="${a.severity}">${a.severity}</td><td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td></tr>`;});
+    if(!al.alerts.length)h+="<tr><td colspan=4>✓ No active threats</td></tr>";
+    h+="</table>";
+    p.innerHTML=h;
+  }catch(e){p.textContent="Error: "+e.message;}
+}
+
+/* ---------- Admin: patient CRUD ---------- */
+async function openPatientsAdmin(){
+  const p=document.getElementById("panel"); p.classList.remove("hidden");
+  try{
+    const d=await api("/api/protected/patients");
+    let h=`<div class="row"><strong>Manage Patients (${d.summary.total_patients})</strong>
+      <button class="btn sm ok" onclick="addPatient()">+ Add Patient</button></div>`;
+    h+="<table><tr><th>PID</th><th>Name</th><th>Diagnosis</th><th>Severity</th><th></th></tr>";
+    (d.patients||[]).slice(0,40).forEach(x=>{
+      h+=`<tr><td>${x.patient_id}</td><td>${x.name}</td><td>${x.diagnosis}</td>
+        <td class="sev-${x.severity}">${x.severity}</td>
+        <td><button class="btn sm danger" onclick="delPatient('${x.patient_id}')">Delete</button></td></tr>`;});
+    p.innerHTML=h+"</table>";
+  }catch(e){p.textContent="Error: "+e.message;}
+}
+async function addPatient(){
+  const name=prompt("Patient name:"); if(!name)return;
+  const diagnosis=prompt("Diagnosis:","Observation")||"";
+  const severity=prompt("Severity (Critical/Serious/Moderate/Stable):","Stable")||"Stable";
+  try{ await api("/api/protected/patients",{method:"POST",body:JSON.stringify(
+    {name,diagnosis,severity,department:"General",status:"Admitted"})}); openPatientsAdmin();
+  }catch(e){alert(e.message);}
+}
+async function delPatient(pid){
+  if(!confirm("Delete "+pid+"?"))return;
+  try{ await api("/api/protected/patients/"+pid,{method:"DELETE"}); openPatientsAdmin(); }
+  catch(e){alert(e.message);}
+}
+
+function val(id){return document.getElementById(id).value.trim();}
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&!document.getElementById("view-login").classList.contains("hidden"))login();});
+</script>
+</body>
+</html>

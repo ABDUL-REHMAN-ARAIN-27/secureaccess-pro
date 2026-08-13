@@ -1,0 +1,19 @@
+# Render.com deployment blueprint for SecureAccess Pro.
+# Push this repo to GitHub, then in Render: New > Blueprint > pick this repo.
+services:
+  - type: web
+    name: secureaccess-pro
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "gunicorn --chdir backend app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120"
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true       # Render generates a strong random secret
+      - key: AUTO_SEED
+        value: "true"             # seed demo accounts + patients on first boot
+      # To enable real email OTP, add these in the Render dashboard (do NOT
+      # commit real secrets to git):
+      #   SMTP_USER      = your-gmail@gmail.com
+      #   SMTP_PASSWORD  = your-16-char-gmail-app-password
+      #   SMTP_FROM      = your-gmail@gmail.com

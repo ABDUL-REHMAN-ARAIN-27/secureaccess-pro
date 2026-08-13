@@ -76,6 +76,30 @@ secureaccess-pro/
 
 ---
 
+## Web version & deployment (public URL)
+
+Besides the desktop GUIs, the backend also serves a **browser app** (login,
+**Create Account**, MFA/email-OTP, role-based dashboard, admin monitoring &
+patient management) at `/`. Run the backend and open `http://127.0.0.1:5000`
+in a browser.
+
+### Deploy to a public URL (Render.com — free)
+
+1. Push this repo to GitHub (already done if you cloned it).
+2. Go to <https://render.com> → sign up (free) → **New → Blueprint**.
+3. Connect your GitHub and pick this repository. Render reads `render.yaml`
+   and configures everything (build + start command).
+4. Click **Apply**. In ~2 minutes you get a public URL like
+   `https://secureaccess-pro.onrender.com` that anyone can open.
+
+The app auto-seeds demo accounts + patients on first boot. To enable **real
+email OTP**, add `SMTP_USER`, `SMTP_PASSWORD` (Gmail App Password) and
+`SMTP_FROM` in Render → your service → **Environment**. (No `render.yaml`?
+Any Python host works with the included `Procfile`.)
+
+> Note: on the free tier the SQLite database resets when the instance sleeps.
+> For persistent data, add a PostgreSQL database and set `DATABASE_URL`.
+
 ## Quick start (one command)
 
 From the project root:
