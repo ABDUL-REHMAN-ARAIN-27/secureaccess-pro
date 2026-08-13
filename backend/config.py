@@ -13,6 +13,13 @@ from datetime import timedelta
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# Load backend/.env (if present) so SMTP credentials etc. are picked up.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(BASE_DIR, ".env"))
+except ImportError:  # python-dotenv is optional
+    pass
+
 
 def _default_database_uri():
     """Use PostgreSQL when DATABASE_URL is provided, otherwise fall back to a

@@ -76,7 +76,21 @@ secureaccess-pro/
 
 ---
 
-## Quick start
+## Quick start (one command)
+
+From the project root:
+
+```bash
+pip install -r backend/requirements.txt
+python run.py
+```
+
+`run.py` seeds the database on first run, starts the backend, and opens a
+launcher window with buttons for the **User Application** and the **Admin
+Security Dashboard** — no separate terminals needed. On Windows you can instead
+just double-click **`START.bat`**; on macOS/Linux run **`./run.sh`**.
+
+## Manual start (step by step)
 
 ### 1. Install dependencies
 
