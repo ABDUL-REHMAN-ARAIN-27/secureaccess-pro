@@ -3,307 +3,309 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SecureAccess Pro</title>
+<title>SecureAccess Pro - Zero Trust Network Access</title>
 <style>
   :root{
-    --bg:#0f2027; --card:#16323a; --field:#1f3f49; --teal:#028090; --mint:#02c39a;
-    --text:#eaf4f4; --muted:#9db4b8; --danger:#e63946; --warn:#f39c12; --ok:#2ecc71;
+    --navy:#2c3e50; --navy2:#34495e; --headbar:#2c3e50; --light:#ecf0f1; --white:#fff;
+    --green:#27ae60; --greenh:#219150; --blue:#3498db; --blueh:#2b83bf; --red:#e74c3c;
+    --text:#2c3e50; --muted:#7f8c8d; --border:#dfe4e8; --ok:#27ae60; --bad:#e74c3c; --warn:#e67e22;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;background:var(--bg);color:var(--text)}
-  a{color:var(--mint)}
-  .wrap{max-width:1000px;margin:0 auto;padding:20px}
-  .center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  h1{font-size:28px;margin:0}
-  .sub{color:var(--muted);margin:6px 0 24px}
-  .card{background:var(--card);border-radius:12px;padding:28px;width:100%;max-width:420px}
-  label{display:block;color:var(--muted);font-size:14px;margin:12px 0 4px}
-  input,select{width:100%;padding:10px;border:none;border-radius:6px;background:var(--field);
-    color:var(--text);font-size:15px}
-  button{cursor:pointer;border:none;border-radius:6px;font-weight:700;font-size:15px}
-  .btn{width:100%;padding:12px;background:var(--teal);color:#fff;margin-top:16px}
-  .btn:hover{background:var(--mint)}
-  .btn.alt{background:var(--field);color:var(--text);margin-top:8px}
-  .btn.sm{width:auto;padding:8px 14px;font-size:13px;margin:0}
-  .btn.danger{background:var(--danger)} .btn.ok{background:var(--ok)} .btn.warn{background:var(--warn)}
-  .link{color:var(--mint);text-align:center;display:block;margin-top:14px;cursor:pointer}
-  .msg{padding:10px;border-radius:6px;margin-top:12px;font-size:14px;display:none}
-  .msg.err{background:rgba(230,57,70,.15);color:#ffb3b9;display:block}
-  .msg.ok{background:rgba(46,204,113,.15);color:#aef0c8;display:block}
-  .topbar{display:flex;justify-content:space-between;align-items:center;background:var(--teal);
-    padding:16px 24px;border-radius:0 0 12px 12px}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:20px}
-  .tile{background:var(--card);border-radius:12px;padding:22px;text-align:center}
-  .tile .ico{font-size:34px}
-  .tile h3{margin:10px 0 4px}
-  .tile p{color:var(--muted);font-size:13px;min-height:34px;margin:0 0 12px}
-  .panel{background:var(--card);border-radius:12px;padding:18px;margin-top:18px;white-space:pre-wrap;
-    font-family:Consolas,monospace;font-size:13px;max-height:340px;overflow:auto}
+  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--light);color:var(--text)}
+  .hidden{display:none !important}
+  button{cursor:pointer;border:none;font-weight:bold;border-radius:3px}
+
+  /* ---------- Login / Register (navy) ---------- */
+  .authwrap{min-height:100vh;background:var(--navy);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:20px}
+  .brand{color:#fff;font-size:34px;font-weight:bold;margin:0}
+  .brand small{font-weight:normal}
+  .tagline{color:#bdc3c7;font-size:15px;margin:8px 0 26px}
+  .authcard{background:var(--navy2);border-radius:6px;padding:34px 40px;width:100%;max-width:520px}
+  .frow{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:12px;margin-bottom:14px}
+  .frow label{color:#ecf0f1;font-size:15px;text-align:right}
+  .frow input{padding:9px;border:none;border-radius:3px;font-size:15px;width:100%}
+  .authbtns{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  .btn-green{background:var(--green);color:#fff;padding:11px 26px;font-size:15px}
+  .btn-green:hover{background:var(--greenh)}
+  .btn-blue{background:var(--blue);color:#fff;padding:11px 26px;font-size:15px}
+  .btn-blue:hover{background:var(--blueh)}
+  .btn-link{background:none;color:#5dade2;text-decoration:underline;font-weight:normal;padding:6px}
+  .authmsg{margin-top:14px;padding:9px;border-radius:3px;font-size:14px;display:none;text-align:center}
+  .authmsg.err{background:#c0392b;color:#fff;display:block}
+  .authmsg.ok{background:#1e8449;color:#fff;display:block}
+  .otp-note{grid-column:1/3;text-align:center}
+
+  /* ---------- Dashboard ---------- */
+  .header{background:var(--headbar);color:#fff;display:flex;justify-content:space-between;
+    align-items:center;padding:16px 26px}
+  .header .h-title{font-size:22px;font-weight:bold}
+  .header .h-user{color:#5dade2;font-size:15px}
+  .tabs{display:flex;background:var(--light);border-bottom:1px solid #cfd6db;padding:0 16px;flex-wrap:wrap}
+  .tab{padding:10px 18px;font-size:14px;color:#566573;cursor:pointer;border:1px solid transparent;border-bottom:none}
+  .tab.active{background:#fff;color:var(--navy);font-weight:bold;border-color:#cfd6db;border-radius:4px 4px 0 0}
+  .content{background:#fff;margin:0 16px 16px;min-height:60vh;padding:24px;border:1px solid #cfd6db;border-top:none}
+  .content h2{text-align:center;color:var(--navy);margin:6px 0 24px}
+  .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+  .appcard{background:#fff;border:1px solid var(--border);border-radius:5px;padding:22px;width:230px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center}
+  .appcard .ico{font-size:26px}
+  .appcard h3{color:var(--navy);margin:8px 0 6px}
+  .appcard p{color:var(--muted);font-size:13px;min-height:34px;margin:0 0 14px}
+  .btn-access{background:var(--green);color:#fff;padding:8px 22px}
+  .btn-access:hover{background:var(--greenh)}
+  .footer{text-align:center;padding:16px}
+  .btn-logout{background:var(--red);color:#fff;padding:9px 30px}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #26414a}
-  th{color:var(--muted)}
-  .sev-Critical,.HIGH{color:var(--danger)} .sev-Serious,.MEDIUM{color:var(--warn)}
-  .st-ok{color:var(--ok)}
-  .badge{padding:10px 14px;border-radius:8px;font-weight:700;margin-top:12px}
-  .badge.ok{background:rgba(46,204,113,.15);color:#aef0c8}
-  .badge.bad{background:rgba(230,57,70,.15);color:#ffb3b9}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-  .hidden{display:none}
-  small.hint{color:var(--muted)}
+  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eee}
+  th{background:var(--navy);color:#fff}
+  tr:nth-child(even) td{background:#f7f9fa}
+  .st-ok{color:var(--ok);font-weight:bold}.st-bad{color:var(--bad);font-weight:bold}.st-warn{color:var(--warn);font-weight:bold}
+  .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
+  .badge.ok{background:#d5f5e3;color:#1e8449}.badge.bad{background:#fadbd8;color:#c0392b}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .btn-sm{padding:6px 12px;font-size:13px;color:#fff}
+  .live{color:var(--green);font-size:12px;font-weight:bold}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+  .modal{background:#fff;border-radius:5px;padding:20px 24px;max-width:440px;width:92%;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+  .modal h3{margin:0 0 12px;color:var(--navy)}
+  .modal .m-body{white-space:pre-wrap;font-size:14px;max-height:320px;overflow:auto}
+  .modal label{display:block;font-size:13px;color:#566573;margin:8px 0 3px}
+  .modal input,.modal select{width:100%;padding:8px;border:1px solid #ccc;border-radius:3px;font-size:14px}
 </style>
 </head>
 <body>
 
 <!-- ================= LOGIN ================= -->
-<div id="view-login" class="center">
-  <h1>🔐 SecureAccess Pro</h1>
-  <div class="sub">Zero Trust Network Access • Multi-Factor Authentication</div>
-  <div class="card">
-    <h2 style="margin-top:0">Sign in</h2>
-    <label>Username</label><input id="li-user" autocomplete="username">
-    <label>Password</label><input id="li-pass" type="password" autocomplete="current-password">
-    <label>6-digit code (email OTP or authenticator)</label><input id="li-otp" inputmode="numeric">
-    <button class="btn alt" onclick="requestOtp()">✉ Email me a code</button>
-    <button class="btn" onclick="login()">Verify &amp; Sign In</button>
-    <span class="link" onclick="show('register')">New here? Create an account</span>
-    <div id="li-msg" class="msg"></div>
+<div id="view-login" class="authwrap">
+  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="tagline">Zero Trust Network Access Control System</div>
+  <div class="authcard">
+    <div class="frow"><label>Username:</label><input id="li-user" autocomplete="username"></div>
+    <div class="frow"><label>Password:</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+    <div class="frow"><label>2FA Code:</label><input id="li-otp" inputmode="numeric" placeholder="6-digit code"></div>
+    <div class="frow"><span></span><button class="btn-link" onclick="requestOtp()">✉ Email me a code</button></div>
+    <div class="authbtns">
+      <button class="btn-green" onclick="login()">LOGIN</button>
+      <button class="btn-blue" onclick="showRegister()">CREATE ACCOUNT</button>
+    </div>
+    <div id="li-msg" class="authmsg"></div>
   </div>
 </div>
 
 <!-- ================= REGISTER ================= -->
-<div id="view-register" class="center hidden">
-  <h1>🔐 SecureAccess Pro</h1>
-  <div class="sub">Create your account (default role: Viewer)</div>
-  <div class="card">
-    <h2 style="margin-top:0">Create account</h2>
-    <label>Username</label><input id="rg-user">
-    <label>Email</label><input id="rg-email" type="email">
-    <label>Password</label><input id="rg-pass" type="password">
-    <small class="hint">Min 8 chars incl. upper, lower, digit &amp; special.</small>
-    <label>Confirm password</label><input id="rg-conf" type="password">
-    <button class="btn" onclick="register()">Create account</button>
-    <span class="link" onclick="show('login')">← Back to sign in</span>
-    <div id="rg-msg" class="msg"></div>
+<div id="view-register" class="authwrap hidden">
+  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="tagline">Create a new account</div>
+  <div class="authcard">
+    <div class="frow"><label>Username:</label><input id="rg-user"></div>
+    <div class="frow"><label>Email:</label><input id="rg-email" type="email"></div>
+    <div class="frow"><label>Password:</label><input id="rg-pass" type="password"></div>
+    <div class="frow"><label>Confirm:</label><input id="rg-conf" type="password"></div>
+    <div class="authbtns">
+      <button class="btn-green" onclick="register()">REGISTER</button>
+      <button class="btn-blue" onclick="showLogin()">BACK TO LOGIN</button>
+    </div>
+    <div id="rg-msg" class="authmsg"></div>
   </div>
 </div>
 
 <!-- ================= DASHBOARD ================= -->
 <div id="view-app" class="hidden">
-  <div class="topbar">
-    <div><strong id="app-title">SecureAccess Pro</strong></div>
-    <div class="row" style="margin:0">
-      <span id="app-who"></span>
-      <button class="btn sm danger" onclick="logout()">Sign out</button>
-    </div>
+  <div class="header">
+    <div class="h-title">🔒 SecureAccess Pro - Dashboard</div>
+    <div class="h-user" id="h-user"></div>
   </div>
-  <div class="wrap">
-    <div class="row">
-      <button class="btn sm" onclick="openPermissions()">📜 My Permissions</button>
-      <span id="admin-bar" class="row hidden" style="margin:0">
-        <button class="btn sm" onclick="openMonitoring()">🛡 Security Monitoring</button>
-        <button class="btn sm" onclick="openPatientsAdmin()">🏥 Manage Patients</button>
-      </span>
-    </div>
-    <div class="tiles" id="tiles"></div>
-    <div id="panel" class="panel hidden"></div>
-  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="content" id="content"></div>
+  <div class="footer"><button class="btn-logout" onclick="logout()">Logout</button></div>
 </div>
 
-<script>
-const API = ""; // same origin
-let token=null, role=null, username=null;
+<!-- modal host -->
+<div id="modal-host"></div>
 
-function show(v){
-  for(const id of ["login","register","app"]) document.getElementById("view-"+id).classList.add("hidden");
-  document.getElementById("view-"+v).classList.remove("hidden");
-}
-function msg(id,text,ok){const e=document.getElementById(id);e.textContent=text;e.className="msg "+(ok?"ok":"err");}
+<script>
+let token=null, role=null, username=null, email=null;
+let monitorTimer=null;
+
+/* ---------- helpers ---------- */
+function show(v){for(const id of["login","register","app"])document.getElementById("view-"+id).classList.add("hidden");
+  document.getElementById("view-"+v).classList.remove("hidden");}
+function showLogin(){show("login");} function showRegister(){show("register");}
+function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.className="authmsg "+(ok?"ok":"err");}
+function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
   opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});
-  if(token) opts.headers["Authorization"]="Bearer "+token;
-  const r=await fetch(API+path,opts);
-  let body={}; try{body=await r.json()}catch(e){}
-  if(!r.ok) throw {status:r.status, message:body.error||body.detail||r.statusText, body};
-  return body;
+  if(token)opts.headers["Authorization"]="Bearer "+token;
+  const r=await fetch(path,opts); let b={}; try{b=await r.json()}catch(e){}
+  if(!r.ok)throw{status:r.status,message:b.error||b.detail||r.statusText,body:b};
+  return b;
 }
+function stopMonitor(){if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}}
+function t19(x){return(x||"").replace("T"," ").slice(0,19);}
+function scls(s){return["DENIED","FAILED","LOCKED"].includes(s)?"st-bad":(["GRANTED","SUCCESS"].includes(s)?"st-ok":"");}
 
+/* ---------- auth ---------- */
 async function requestOtp(){
-  const u=val("li-user"), p=val("li-pass");
-  if(!u||!p){return msg("li-msg","Enter username and password first.",false);}
-  try{
-    const d=await api("/api/request-otp",{method:"POST",body:JSON.stringify({username:u,password:p})});
-    if(d.dev_code){document.getElementById("li-otp").value=d.dev_code;}
-    msg("li-msg",d.message,true);
-  }catch(e){msg("li-msg",e.message,false);}
+  const u=val("li-user"),p=val("li-pass");
+  if(!u||!p)return amsg("li-msg","Enter username and password first.",false);
+  try{const d=await api("/api/request-otp",{method:"POST",body:JSON.stringify({username:u,password:p})});
+    if(d.dev_code)document.getElementById("li-otp").value=d.dev_code;
+    amsg("li-msg",d.message,true);}catch(e){amsg("li-msg",e.message,false);}
 }
 async function login(){
-  try{
-    const d=await api("/api/login",{method:"POST",body:JSON.stringify(
-      {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp")})});
-    token=d.token; role=d.role; username=d.username;
-    enterApp();
-  }catch(e){msg("li-msg",e.message,false);}
+  try{const d=await api("/api/login",{method:"POST",body:JSON.stringify(
+    {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp")})});
+    token=d.token;role=d.role;username=d.username;email=d.email;enterApp();
+  }catch(e){amsg("li-msg",e.message,false);}
 }
 async function register(){
-  try{
-    const d=await api("/api/register",{method:"POST",body:JSON.stringify({
-      username:val("rg-user"),email:val("rg-email"),
-      password:val("rg-pass"),confirm_password:val("rg-conf")})});
-    msg("rg-msg",d.message+" (TOTP secret: "+d.totp_secret+")",true);
-    setTimeout(()=>show("login"),4000);
-  }catch(e){msg("rg-msg",e.message,false);}
+  try{const d=await api("/api/register",{method:"POST",body:JSON.stringify({
+    username:val("rg-user"),email:val("rg-email"),password:val("rg-pass"),confirm_password:val("rg-conf")})});
+    amsg("rg-msg",d.message,true); setTimeout(showLogin,3500);
+  }catch(e){amsg("rg-msg",e.message,false);}
 }
 function logout(){stopMonitor();token=role=username=null;document.getElementById("li-otp").value="";show("login");}
 
+/* ---------- dashboard ---------- */
 const APPS=[
-  {ico:"👥",title:"HR Portal",desc:"Employee records & leave",roles:["Admin","User"],path:"/api/protected/hr"},
-  {ico:"💰",title:"Finance Dashboard",desc:"Revenue, expenses & invoices",roles:["Admin"],path:"/api/protected/finance"},
-  {ico:"🏥",title:"Patient Records",desc:"Confidential patient health data",roles:["Admin","User"],path:"/api/protected/patients"},
-  {ico:"📁",title:"Document Manager",desc:"Shared documents (read)",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
+  {ico:"👥",title:"HR Portal",desc:"Employee records\nLeave management",roles:["Admin","User"],path:"/api/protected/hr"},
+  {ico:"💰",title:"Finance",desc:"Financial reports\nBudget data",roles:["Admin"],path:"/api/protected/finance"},
+  {ico:"🏥",title:"Patient Records",desc:"Confidential health data",roles:["Admin","User"],path:"/api/protected/patients"},
+  {ico:"📁",title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
 ];
-
+function tabsFor(r){
+  const t=[["apps","Applications"],["perms","My Permissions"]];
+  if(r==="Admin")return[["apps","Applications"],["access","Access Logs"],["login","Login History"],
+    ["site","Site Access Log"],["alerts","Security Alerts"],["patients","Patients"],["perms","My Permissions"]];
+  return t;
+}
+let activeTab="apps";
 function enterApp(){
-  stopMonitor();
-  show("app");
-  document.getElementById("app-who").textContent="Signed in as "+username+" ("+role+")";
-  document.getElementById("admin-bar").classList.toggle("hidden", role!=="Admin");
-  const t=document.getElementById("tiles"); t.innerHTML="";
-  APPS.filter(a=>a.roles.includes(role)).forEach(a=>{
-    const d=document.createElement("div"); d.className="tile";
-    d.innerHTML=`<div class="ico">${a.ico}</div><h3>${a.title}</h3><p>${a.desc}</p>`;
-    const b=document.createElement("button"); b.className="btn"; b.textContent="Open";
-    b.onclick=()=>openResource(a); d.appendChild(b); t.appendChild(d);
+  stopMonitor(); show("app");
+  document.getElementById("h-user").textContent=`User: ${username} | Role: ${role}`;
+  const tb=document.getElementById("tabs"); tb.innerHTML="";
+  tabsFor(role).forEach(([k,label])=>{
+    const d=document.createElement("div"); d.className="tab"+(k===activeTab?" active":"");
+    d.textContent=label; d.onclick=()=>selectTab(k); tb.appendChild(d);
   });
-  document.getElementById("panel").classList.add("hidden");
+  selectTab("apps");
 }
+function selectTab(k){
+  activeTab=k; stopMonitor();
+  [...document.getElementById("tabs").children].forEach(c=>c.classList.toggle("active",c.textContent===tabLabel(k)));
+  if(k==="apps")renderApps();
+  else if(k==="perms")renderPermissions();
+  else if(k==="patients")renderPatients();
+  else if(k==="alerts"){renderSecurity();monitorTimer=setInterval(renderSecurity,3000);}
+  else renderLogFeed(k);
+}
+function tabLabel(k){return (tabsFor(role).find(t=>t[0]===k)||[,k])[1];}
+function setContent(html){document.getElementById("content").innerHTML=html;}
 
-async function openResource(a){
-  stopMonitor();
-  const p=document.getElementById("panel"); p.classList.remove("hidden");
-  try{
-    const d=await api(a.path);
-    if(a.title==="Patient Records"){ p.innerHTML=renderPatients(d); }
-    else if(a.title==="Document Manager"){ p.innerHTML=renderDocs(d); }
-    else { p.textContent="✅ ACCESS GRANTED — "+a.title+"\n\n"+pretty(d.data||d); }
-  }catch(e){
-    p.textContent=(e.status===403?"⛔ ACCESS DENIED — your role does not permit this.\nThis denial is logged on the security dashboard.":"Error: "+e.message);
-  }
+function renderApps(){
+  let h='<h2>Protected Applications</h2><div class="cards">';
+  APPS.filter(a=>a.roles.includes(role)).forEach((a,i)=>{
+    h+=`<div class="appcard"><div class="ico">${a.ico}</div><h3>${a.title}</h3>
+      <p>${a.desc.replace(/\n/g,'<br>')}</p>
+      <button class="btn-access" onclick="openApp(${i})">Access</button></div>`;
+  });
+  setContent(h+'</div>');
 }
-function pretty(o,ind=0){
-  const pad="  ".repeat(ind); let s="";
-  if(Array.isArray(o)){o.forEach(v=>{s+=pad+"• "+(typeof v==="object"?Object.entries(v).map(([k,x])=>k+"="+x).join("  "):v)+"\n";});}
+async function openApp(i){
+  const a=APPS.filter(x=>x.roles.includes(role))[i];
+  try{const d=await api(a.path);
+    if(a.title==="Patient Records")modal("Access Granted — Patient Records",patientsTable(d));
+    else if(a.title==="Documents")modal("Access Granted — Documents",docsTable(d));
+    else modal("Access Granted — "+a.title,pretty(d.data||d));
+  }catch(e){modal(e.status===403?"⛔ Access Denied":"Error",
+    e.status===403?"Your role does not permit this application.\nThis attempt has been logged and the admin alerted.":e.message);}
+}
+function pretty(o,ind=0){const pad="  ".repeat(ind);let s="";
+  if(Array.isArray(o)){o.forEach(v=>s+=pad+"• "+(typeof v==="object"?Object.entries(v).map(([k,x])=>k+"="+x).join("  "):v)+"\n");}
   else if(o&&typeof o==="object"){for(const[k,v]of Object.entries(o)){if(k.startsWith("_"))continue;
-    if(v&&typeof v==="object"){s+=pad+k+":\n"+pretty(v,ind+1);}else{s+=pad+k+": "+v+"\n";}}}
-  else s+=pad+o+"\n";
-  return s;
-}
-function renderPatients(d){
-  const s=d.summary||{};
-  let h=`✅ ${d.classification||"Patient Records"}\nTotal ${s.total_patients} · Critical ${s.critical} · Serious ${s.serious} · ICU ${s.in_icu}\n\n`;
-  h+="<table><tr><th>PID</th><th>Name</th><th>Age</th><th>Diagnosis</th><th>Severity</th><th>Dept</th></tr>";
-  (d.patients||[]).slice(0,40).forEach(p=>{h+=`<tr><td>${p.patient_id}</td><td>${p.name}</td><td>${p.age}</td><td>${p.diagnosis}</td><td class="sev-${p.severity}">${p.severity}</td><td>${p.department}</td></tr>`;});
-  h+="</table>"; return h;
-}
-function renderDocs(d){
-  let h="✅ Document Manager\n\n<table><tr><th>Document</th><th>Size</th></tr>";
-  (d.data.documents||[]).forEach(x=>{h+=`<tr><td>${x.name}</td><td>${x.size_bytes} B</td></tr>`;});
-  return h+"</table>";
-}
+    s+= (v&&typeof v==="object")?pad+k+":\n"+pretty(v,ind+1):pad+k+": "+v+"\n";}}
+  else s+=pad+o+"\n"; return s;}
+function patientsTable(d){const s=d.summary||{};
+  let h=`${d.classification||""}\nTotal ${s.total_patients} · Critical ${s.critical} · Serious ${s.serious} · ICU ${s.in_icu}\n\n`;
+  h+="<table><tr><th>PID</th><th>Name</th><th>Age</th><th>Diagnosis</th><th>Severity</th></tr>";
+  (d.patients||[]).slice(0,30).forEach(p=>h+=`<tr><td>${p.patient_id}</td><td>${p.name}</td><td>${p.age}</td><td>${p.diagnosis}</td><td>${p.severity}</td></tr>`);
+  return h+"</table>";}
+function docsTable(d){let h="<table><tr><th>Document</th><th>Size</th></tr>";
+  (d.data.documents||[]).forEach(x=>h+=`<tr><td>${x.name}</td><td>${x.size_bytes} B</td></tr>`);return h+"</table>";}
 
-/* ---------- My Permissions (rules) ---------- */
-async function openPermissions(){
-  stopMonitor();
-  const p=document.getElementById("panel"); p.classList.remove("hidden");
-  try{
-    const d=await api("/api/my-permissions");
-    let h=`<strong>📜 My Access Rules — Role: ${d.role}</strong>\n`;
-    h+="Ye aap ki permissions hain. ❌ wali cheez access karne par admin ko alert milega.\n\n";
+async function renderPermissions(){
+  try{const d=await api("/api/my-permissions");
+    let h=`<h2>My Access Rules — Role: ${d.role}</h2>`;
+    h+="<p style='text-align:center;color:#7f8c8d'>❌ wali cheez access karne par admin ko turant alert milega.</p>";
     h+="<table><tr><th>Feature / Resource</th><th>Access</th></tr>";
-    d.permissions.forEach(x=>{
-      h+=`<tr><td>${x.feature}</td><td class="${x.allowed?'st-ok':'sev-Critical'}">${x.allowed?'✅ Allowed':'❌ Not allowed'}</td></tr>`;
+    d.permissions.forEach(x=>h+=`<tr><td>${x.feature}</td><td class="${x.allowed?'st-ok':'st-bad'}">${x.allowed?'✅ Allowed':'❌ Not allowed'}</td></tr>`);
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
+}
+
+/* ---- admin log feeds ---- */
+async function renderLogFeed(k){
+  const map={access:["/api/logs?limit=100","Access Logs",["Time","User","Action","Resource","Status","IP"]],
+    login:["/api/login-history?limit=100","Login History",["Time","User","Status","Reason","IP"]],
+    site:["/api/site-access?limit=100","Site Access Log",["Time","Method","Path","IP","User-Agent"]]};
+  const [url,title,cols]=map[k];
+  try{const rows=await api(url);
+    let h=`<h2>${title}</h2><div class="live">● live data</div><table><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr>`;
+    rows.forEach(r=>{
+      if(k==="access")h+=`<tr><td>${t19(r.timestamp)}</td><td>${r.username||""}</td><td>${r.action||""}</td><td>${r.resource||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.ip_address||""}</td></tr>`;
+      else if(k==="login")h+=`<tr><td>${t19(r.login_time)}</td><td>${r.username||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.failure_reason||""}</td><td>${r.ip_address||""}</td></tr>`;
+      else h+=`<tr><td>${t19(r.access_time)}</td><td>${r.method||""}</td><td>${r.page_accessed||""}</td><td>${r.ip_address||""}</td><td>${(r.user_agent||"").slice(0,40)}</td></tr>`;
     });
-    h+="</table>";
-    p.innerHTML=h;
-  }catch(e){p.textContent="Error: "+e.message;}
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
 }
 
-/* ---------- Admin: LIVE monitoring ---------- */
-let monitorTimer=null;
-function stopMonitor(){ if(monitorTimer){clearInterval(monitorTimer); monitorTimer=null;} }
-
-async function openMonitoring(){
-  const p=document.getElementById("panel"); p.classList.remove("hidden");
-  await renderMonitoring(p);
-  stopMonitor();
-  monitorTimer=setInterval(()=>renderMonitoring(p), 3000);   // live auto-refresh
-}
-
-async function renderMonitoring(p){
-  const t=x=>(x||"").replace("T"," ").slice(0,19);
-  const scls=s=>(["DENIED","FAILED","LOCKED"].includes(s)?"sev-Critical":(["GRANTED","SUCCESS"].includes(s)?"st-ok":""));
-  try{
-    const [m,al,au,logs,hist]=await Promise.all([
-      api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),
-      api("/api/logs?limit=40"),api("/api/login-history?limit=20")]);
-
-    let h=`<div class="row" style="margin:0 0 8px"><strong>🛡 Live Security Monitoring</strong>`
-        +`<span style="color:var(--mint);font-size:12px">● auto-refreshing every 3s</span></div>`;
+async function renderSecurity(){
+  try{const [m,al,au]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify")]);
+    let h=`<h2>Security Alerts &amp; Monitoring</h2><div class="live">● auto-refreshing every 3s</div>`;
     h+=`<div class="badge ${au.intact?"ok":"bad"}">🔒 Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING at #"+au.broken_at}</div>`;
-    h+=`\n\nUsers ${m.total_users} · Logins ${m.total_logins} · Failed ${m.failed_logins} · Granted ${m.granted_access} · Denied ${m.denied_access} · Locked ${m.locked_accounts}\n`;
-
-    h+=`<strong>🚨 Security Alerts (${al.count})</strong>`;
-    h+="<table><tr><th>Severity</th><th>Type</th><th>Subject</th><th>Detail</th></tr>";
-    al.alerts.forEach(a=>{h+=`<tr><td class="${a.severity}">${a.severity}</td><td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td></tr>`;});
-    if(!al.alerts.length)h+="<tr><td colspan=4>✓ No active threats</td></tr>";
-    h+="</table>";
-
-    // WHO is doing WHAT — live activity feed
-    h+=`<strong>📋 Activity Logs — kaun user/viewer kya kar raha hai</strong>`;
-    h+="<table><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Status</th><th>IP</th></tr>";
-    logs.forEach(r=>{h+=`<tr><td>${t(r.timestamp)}</td><td>${r.username||""}</td><td>${r.action||""}</td><td>${r.resource||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.ip_address||""}</td></tr>`;});
-    h+="</table>";
-
-    // Login attempts
-    h+=`<strong>🔑 Login History</strong>`;
-    h+="<table><tr><th>Time</th><th>User</th><th>Status</th><th>Reason</th><th>IP</th></tr>";
-    hist.forEach(r=>{h+=`<tr><td>${t(r.login_time)}</td><td>${r.username||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.failure_reason||""}</td><td>${r.ip_address||""}</td></tr>`;});
-    h+="</table>";
-
-    p.innerHTML=h;
-  }catch(e){ p.textContent="Error: "+e.message; stopMonitor(); }
+    h+=`<p>Users ${m.total_users} · Logins ${m.total_logins} · Failed ${m.failed_logins} · Granted ${m.granted_access} · Denied ${m.denied_access} · Locked ${m.locked_accounts}</p>`;
+    h+=`<table><tr><th>Severity</th><th>Type</th><th>Subject</th><th>Detail</th></tr>`;
+    al.alerts.forEach(a=>h+=`<tr><td class="${a.severity==='HIGH'?'st-bad':'st-warn'}">${a.severity}</td><td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td></tr>`);
+    if(!al.alerts.length)h+="<tr><td colspan=4 class='st-ok'>✓ No active threats detected</td></tr>";
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
 }
 
-/* ---------- Admin: patient CRUD ---------- */
-async function openPatientsAdmin(){
-  stopMonitor();
-  const p=document.getElementById("panel"); p.classList.remove("hidden");
-  try{
-    const d=await api("/api/protected/patients");
-    let h=`<div class="row"><strong>Manage Patients (${d.summary.total_patients})</strong>
-      <button class="btn sm ok" onclick="addPatient()">+ Add Patient</button></div>`;
-    h+="<table><tr><th>PID</th><th>Name</th><th>Diagnosis</th><th>Severity</th><th></th></tr>";
-    (d.patients||[]).slice(0,40).forEach(x=>{
-      h+=`<tr><td>${x.patient_id}</td><td>${x.name}</td><td>${x.diagnosis}</td>
-        <td class="sev-${x.severity}">${x.severity}</td>
-        <td><button class="btn sm danger" onclick="delPatient('${x.patient_id}')">Delete</button></td></tr>`;});
-    p.innerHTML=h+"</table>";
-  }catch(e){p.textContent="Error: "+e.message;}
+/* ---- patients CRUD (admin) ---- */
+async function renderPatients(){
+  try{const d=await api("/api/protected/patients");
+    let h=`<h2>Patient Records (${d.summary.total_patients})</h2>`;
+    h+=`<div class="toolbar"><button class="btn-sm" style="background:#27ae60" onclick="addPatient()">+ Add Patient</button></div>`;
+    h+="<table><tr><th>PID</th><th>Name</th><th>Age</th><th>Diagnosis</th><th>Severity</th><th>Dept</th><th></th></tr>";
+    (d.patients||[]).forEach(p=>h+=`<tr><td>${p.patient_id}</td><td>${p.name}</td><td>${p.age}</td><td>${p.diagnosis}</td>
+      <td class="${p.severity==='Critical'?'st-bad':(p.severity==='Serious'?'st-warn':'')}">${p.severity}</td><td>${p.department}</td>
+      <td><button class="btn-sm" style="background:#e74c3c" onclick="delPatient('${p.patient_id}')">Delete</button></td></tr>`);
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
 }
 async function addPatient(){
   const name=prompt("Patient name:"); if(!name)return;
   const diagnosis=prompt("Diagnosis:","Observation")||"";
   const severity=prompt("Severity (Critical/Serious/Moderate/Stable):","Stable")||"Stable";
-  try{ await api("/api/protected/patients",{method:"POST",body:JSON.stringify(
-    {name,diagnosis,severity,department:"General",status:"Admitted"})}); openPatientsAdmin();
-  }catch(e){alert(e.message);}
-}
-async function delPatient(pid){
-  if(!confirm("Delete "+pid+"?"))return;
-  try{ await api("/api/protected/patients/"+pid,{method:"DELETE"}); openPatientsAdmin(); }
+  try{await api("/api/protected/patients",{method:"POST",body:JSON.stringify({name,diagnosis,severity,department:"General",status:"Admitted"})});renderPatients();}
   catch(e){alert(e.message);}
 }
+async function delPatient(pid){if(!confirm("Delete "+pid+"?"))return;
+  try{await api("/api/protected/patients/"+pid,{method:"DELETE"});renderPatients();}catch(e){alert(e.message);}}
 
-function val(id){return document.getElementById(id).value.trim();}
+/* ---- modal ---- */
+function modal(title,body){
+  document.getElementById("modal-host").innerHTML=
+    `<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3>${title}</h3><div class="m-body">${/[<]/.test(body)?body:escapeHtml(body)}</div>
+      <div style="text-align:right;margin-top:14px"><button class="btn-blue" onclick="closeModal()">OK</button></div>
+    </div></div>`;
+}
+function closeModal(){document.getElementById("modal-host").innerHTML="";}
+function escapeHtml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&!document.getElementById("view-login").classList.contains("hidden"))login();});
 </script>
 </body>
