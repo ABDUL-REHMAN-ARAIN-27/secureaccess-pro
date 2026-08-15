@@ -1,3 +1,13 @@
+---
+title: SecureAccess Pro
+emoji: 🔐
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SecureAccess Pro
 
 **A Zero Trust Network Access Control System with Multi-Factor Authentication and Real-Time Monitoring Dashboard**
