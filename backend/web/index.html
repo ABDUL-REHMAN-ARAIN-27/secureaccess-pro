@@ -64,6 +64,10 @@
   th{background:var(--navy);color:#fff}
   tr:nth-child(even) td{background:#f7f9fa}
   .st-ok{color:var(--ok);font-weight:bold}.st-bad{color:var(--bad);font-weight:bold}.st-warn{color:var(--warn);font-weight:bold}
+  .pill{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold}
+  .pill-ok{background:#d5f5e3;color:#1e8449}.pill-bad{background:#fadbd8;color:#c0392b}
+  .panel-narrow{max-width:660px;margin:0 auto}
+  .subtitle{text-align:center;color:#7f8c8d;font-size:14px;margin:-8px 0 20px}
   .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
   .badge.ok{background:#d5f5e3;color:#1e8449}.badge.bad{background:#fadbd8;color:#c0392b}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
@@ -240,10 +244,11 @@ function docsTable(d){let h="<table><tr><th>Document</th><th>Size</th></tr>";
 async function renderPermissions(){
   try{const d=await api("/api/my-permissions");
     let h=`<h2>My Access Rules — Role: ${d.role}</h2>`;
-    h+="<p style='text-align:center;color:#7f8c8d'>❌ wali cheez access karne par admin ko turant alert milega.</p>";
-    h+="<table><tr><th>Feature / Resource</th><th>Access</th></tr>";
-    d.permissions.forEach(x=>h+=`<tr><td>${x.feature}</td><td class="${x.allowed?'st-ok':'st-bad'}">${x.allowed?'✅ Allowed':'❌ Not allowed'}</td></tr>`);
-    setContent(h+"</table>");
+    h+="<p class='subtitle'>Features marked <b>Denied</b> are outside your role. Any attempt to access them is blocked and instantly alerts the administrator.</p>";
+    h+="<div class='panel-narrow'><table><tr><th>Feature / Resource</th><th style='text-align:center;width:140px'>Access</th></tr>";
+    d.permissions.forEach(x=>h+=`<tr><td>${x.feature}</td><td style='text-align:center'>
+      <span class="pill ${x.allowed?'pill-ok':'pill-bad'}">${x.allowed?'✓ Allowed':'✕ Denied'}</span></td></tr>`);
+    setContent(h+"</table></div>");
   }catch(e){setContent("Error: "+e.message);}
 }
 
