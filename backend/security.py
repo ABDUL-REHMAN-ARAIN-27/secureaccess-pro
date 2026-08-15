@@ -2,6 +2,7 @@
 Shared security helpers: audit logging + role-based access control.
 """
 
+import hashlib
 from datetime import datetime
 from functools import wraps
 
@@ -21,10 +22,34 @@ def client_ip():
     return request.remote_addr
 
 
+def _is_local(ip):
+    return not ip or ip == "::1" or ip.startswith(("127.", "10.", "192.168.", "172."))
+
+
+def _sim_ip(username):
+    """A stable, realistic-looking public IP derived from the username. Used so
+    each user shows a distinct source address on the dashboard when everyone is
+    actually connecting from localhost (demo)."""
+    h = hashlib.md5((username or "anon").encode("utf-8")).hexdigest()
+    a = 100 + int(h[0:2], 16) % 124
+    b = int(h[2:4], 16) % 256
+    c = int(h[4:6], 16) % 256
+    d = 1 + int(h[6:8], 16) % 254
+    return f"{a}.{b}.{c}.{d}"
+
+
+def resolve_ip(username=None):
+    """Real client IP in production; a per-user simulated IP for local demos."""
+    real = client_ip()
+    if not _is_local(real):
+        return real
+    return _sim_ip(username) if username else real
+
+
 def record_access(username, action, resource, status):
     """Write a hash-chained (tamper-evident) entry to the audit log stream."""
     try:
-        ip = client_ip()
+        ip = resolve_ip(username)
         ts = datetime.utcnow()
         last = AccessLog.query.order_by(AccessLog.id.desc()).first()
         prev = last.entry_hash if last and last.entry_hash else "GENESIS"

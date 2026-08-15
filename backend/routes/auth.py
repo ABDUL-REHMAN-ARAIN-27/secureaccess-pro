@@ -19,7 +19,7 @@ from extensions import db
 from mailer import send_otp_email
 from models import User, LoginHistory, ROLE_VIEWER
 from ratelimit import rate_limited
-from security import client_ip, record_access
+from security import client_ip, record_access, resolve_ip
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -88,7 +88,7 @@ def _log_login(username, status, reason=None):
         db.session.add(
             LoginHistory(
                 username=username,
-                ip_address=client_ip(),
+                ip_address=resolve_ip(username),
                 status=status,
                 failure_reason=reason,
             )

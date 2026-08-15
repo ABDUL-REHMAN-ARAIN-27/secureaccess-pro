@@ -84,8 +84,7 @@ class UserApp:
         self.root.bind("<Return>", lambda _e: self.do_login())
 
         tk.Label(self.root,
-                 text="Accounts:  Abdul Rehman / AbdulRehman2711   •   user / User@123   •   viewer / Viewer@123\n"
-                      "Login code: click 'Email me a code' (emailed), or use  python backend/show_code.py <username>",
+                 text="Multi-Factor Authentication  •  click 'Email me a code' to receive your login code",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED, justify="center").pack(side="bottom", pady=16)
 
     def show_register(self):

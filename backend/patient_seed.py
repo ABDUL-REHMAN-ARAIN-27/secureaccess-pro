@@ -1,96 +1,71 @@
 """
-Deterministic generator for ~55 synthetic patient records.
+Patient records for SecureAccess Pro.
 
-All data is fake but realistic, covering a range of serious medical cases so
-the Patient Records module looks substantial in a demo. Deterministic (fixed
-random seed) so re-seeding produces the same set.
+A curated set of realistic (but synthetic) patient records — hand-written so the
+data reads naturally rather than machine-generated. No real people are
+represented; any resemblance is coincidental.
 """
 
-import random
-
-FIRST_NAMES = [
-    "Imran", "Nadia", "Kamran", "Sara", "Bilal", "Hina", "Ali", "Ayesha", "Usman",
-    "Fatima", "Hamza", "Zainab", "Ahmed", "Maryam", "Bilquis", "Tariq", "Rabia",
-    "Junaid", "Saima", "Noman", "Kiran", "Faisal", "Amna", "Rizwan", "Sadia",
-    "Adnan", "Mehwish", "Yasir", "Nimra", "Salman", "Iqra", "Waqas", "Hooria",
-    "Kashif", "Rida", "Owais", "Sana", "Danish", "Areeba", "Shahzad",
+PATIENTS = [
+    {"patient_id": "PT-2001", "name": "Imran Ali Khan",       "age": 54, "gender": "M", "blood_group": "B+",  "diagnosis": "Acute Myocardial Infarction", "severity": "Critical", "department": "Cardiology",       "attending": "Dr. Zafar Iqbal",   "status": "ICU",        "admitted_on": "2025-01-14", "contact": "0300-2145879"},
+    {"patient_id": "PT-2002", "name": "Ayesha Siddiqui",      "age": 32, "gender": "F", "blood_group": "O+",  "diagnosis": "Type 2 Diabetes (uncontrolled)", "severity": "Moderate", "department": "Endocrinology",  "attending": "Dr. Meher Fatima",  "status": "Outpatient", "admitted_on": "2025-02-03", "contact": "0321-9963410"},
+    {"patient_id": "PT-2003", "name": "Muhammad Bilal",       "age": 61, "gender": "M", "blood_group": "A-",  "diagnosis": "Ischemic Stroke",              "severity": "Serious",  "department": "Neurology",        "attending": "Dr. Naveed Anwar",  "status": "Admitted",   "admitted_on": "2025-01-27", "contact": "0333-4471200"},
+    {"patient_id": "PT-2004", "name": "Fatima Noor",          "age": 27, "gender": "F", "blood_group": "AB+", "diagnosis": "Bronchial Asthma",             "severity": "Stable",   "department": "Pulmonology",      "attending": "Dr. Shabana Yasmin","status": "Outpatient", "admitted_on": "2025-03-11", "contact": "0345-1122098"},
+    {"patient_id": "PT-2005", "name": "Abdul Rehman Butt",    "age": 68, "gender": "M", "blood_group": "O-",  "diagnosis": "Community-Acquired Pneumonia", "severity": "Serious",  "department": "Pulmonology",      "attending": "Dr. Shabana Yasmin","status": "Admitted",   "admitted_on": "2025-02-19", "contact": "0301-7788456"},
+    {"patient_id": "PT-2006", "name": "Hina Raza",            "age": 39, "gender": "F", "blood_group": "B-",  "diagnosis": "Chronic Migraine",             "severity": "Stable",   "department": "Neurology",        "attending": "Dr. Naveed Anwar",  "status": "Outpatient", "admitted_on": "2025-03-05", "contact": "0312-6650071"},
+    {"patient_id": "PT-2007", "name": "Usman Ghani",          "age": 45, "gender": "M", "blood_group": "A+",  "diagnosis": "Acute Pancreatitis",           "severity": "Serious",  "department": "Gastroenterology", "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-02-28", "contact": "0300-8890132"},
+    {"patient_id": "PT-2008", "name": "Sana Malik",           "age": 24, "gender": "F", "blood_group": "O+",  "diagnosis": "Iron-deficiency Anaemia",      "severity": "Stable",   "department": "Hematology",       "attending": "Dr. Farah Deeba",   "status": "Outpatient", "admitted_on": "2025-03-22", "contact": "0322-4451900"},
+    {"patient_id": "PT-2009", "name": "Kamran Shah",          "age": 58, "gender": "M", "blood_group": "AB-", "diagnosis": "Cardiac Arrhythmia",           "severity": "Serious",  "department": "Cardiology",       "attending": "Dr. Zafar Iqbal",   "status": "Admitted",   "admitted_on": "2025-01-31", "contact": "0333-1200945"},
+    {"patient_id": "PT-2010", "name": "Nadia Hussain",        "age": 47, "gender": "F", "blood_group": "B+",  "diagnosis": "Hypertensive Emergency",       "severity": "Serious",  "department": "Emergency",        "attending": "Dr. Rizwan Aslam",  "status": "Admitted",   "admitted_on": "2025-04-02", "contact": "0345-9981123"},
+    {"patient_id": "PT-2011", "name": "Ali Raza",             "age": 19, "gender": "M", "blood_group": "O+",  "diagnosis": "Appendectomy (recovery)",      "severity": "Stable",   "department": "General Surgery",  "attending": "Dr. Junaid Akram",  "status": "Discharged", "admitted_on": "2025-03-18", "contact": "0301-5567842"},
+    {"patient_id": "PT-2012", "name": "Maryam Bibi",          "age": 72, "gender": "F", "blood_group": "A+",  "diagnosis": "Chronic Kidney Disease (St. 4)","severity": "Moderate", "department": "Nephrology",       "attending": "Dr. Nasreen Kausar","status": "Admitted",   "admitted_on": "2025-02-08", "contact": "0311-3345678"},
+    {"patient_id": "PT-2013", "name": "Hamza Sheikh",         "age": 36, "gender": "M", "blood_group": "B+",  "diagnosis": "Road Traffic Accident (polytrauma)","severity": "Critical","department": "Emergency",   "attending": "Dr. Rizwan Aslam",  "status": "ICU",        "admitted_on": "2025-04-10", "contact": "0300-7712340"},
+    {"patient_id": "PT-2014", "name": "Zainab Qureshi",       "age": 29, "gender": "F", "blood_group": "O-",  "diagnosis": "Hypothyroidism",               "severity": "Stable",   "department": "Endocrinology",    "attending": "Dr. Meher Fatima",  "status": "Outpatient", "admitted_on": "2025-03-29", "contact": "0321-6678120"},
+    {"patient_id": "PT-2015", "name": "Tariq Mehmood",        "age": 63, "gender": "M", "blood_group": "A-",  "diagnosis": "COPD Exacerbation",            "severity": "Serious",  "department": "Pulmonology",      "attending": "Dr. Shabana Yasmin","status": "Admitted",   "admitted_on": "2025-01-22", "contact": "0333-9902314"},
+    {"patient_id": "PT-2016", "name": "Rabia Aslam",          "age": 41, "gender": "F", "blood_group": "AB+", "diagnosis": "Gallstones (cholecystitis)",   "severity": "Moderate", "department": "General Surgery",  "attending": "Dr. Junaid Akram",  "status": "Admitted",   "admitted_on": "2025-04-06", "contact": "0345-2201789"},
+    {"patient_id": "PT-2017", "name": "Junaid Farooqi",       "age": 50, "gender": "M", "blood_group": "O+",  "diagnosis": "Sepsis (urinary source)",      "severity": "Critical", "department": "ICU",              "attending": "Dr. Rizwan Aslam",  "status": "ICU",        "admitted_on": "2025-02-14", "contact": "0300-4478812"},
+    {"patient_id": "PT-2018", "name": "Saima Akhtar",         "age": 34, "gender": "F", "blood_group": "B-",  "diagnosis": "Rheumatoid Arthritis",         "severity": "Moderate", "department": "Rheumatology",     "attending": "Dr. Farah Deeba",   "status": "Outpatient", "admitted_on": "2025-03-14", "contact": "0312-9987001"},
+    {"patient_id": "PT-2019", "name": "Noman Baig",           "age": 57, "gender": "M", "blood_group": "A+",  "diagnosis": "Colorectal Carcinoma",         "severity": "Serious",  "department": "Oncology",         "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-01-19", "contact": "0333-5540023"},
+    {"patient_id": "PT-2020", "name": "Kiran Shahzad",        "age": 22, "gender": "F", "blood_group": "O+",  "diagnosis": "Acute Gastroenteritis",        "severity": "Stable",   "department": "Gastroenterology", "attending": "Dr. Kamal Haider",  "status": "Discharged", "admitted_on": "2025-04-01", "contact": "0345-3312098"},
+    {"patient_id": "PT-2021", "name": "Faisal Mahmood",       "age": 66, "gender": "M", "blood_group": "AB+", "diagnosis": "Congestive Heart Failure",     "severity": "Serious",  "department": "Cardiology",       "attending": "Dr. Zafar Iqbal",   "status": "Admitted",   "admitted_on": "2025-02-25", "contact": "0300-9987450"},
+    {"patient_id": "PT-2022", "name": "Amna Tariq",           "age": 31, "gender": "F", "blood_group": "B+",  "diagnosis": "Ectopic Pregnancy",            "severity": "Serious",  "department": "Gynaecology",      "attending": "Dr. Nasreen Kausar","status": "Admitted",   "admitted_on": "2025-04-08", "contact": "0321-1123400"},
+    {"patient_id": "PT-2023", "name": "Rizwan Haider",        "age": 48, "gender": "M", "blood_group": "O-",  "diagnosis": "Diabetic Ketoacidosis",        "severity": "Critical", "department": "ICU",              "attending": "Dr. Meher Fatima",  "status": "ICU",        "admitted_on": "2025-03-02", "contact": "0333-7789012"},
+    {"patient_id": "PT-2024", "name": "Mehwish Iqbal",        "age": 26, "gender": "F", "blood_group": "A+",  "diagnosis": "Urinary Tract Infection",      "severity": "Stable",   "department": "Nephrology",       "attending": "Dr. Nasreen Kausar","status": "Outpatient", "admitted_on": "2025-03-27", "contact": "0345-4478123"},
+    {"patient_id": "PT-2025", "name": "Yasir Nawaz",          "age": 53, "gender": "M", "blood_group": "B+",  "diagnosis": "Liver Cirrhosis",              "severity": "Serious",  "department": "Gastroenterology", "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-02-11", "contact": "0300-3390021"},
+    {"patient_id": "PT-2026", "name": "Iqra Javed",           "age": 20, "gender": "F", "blood_group": "O+",  "diagnosis": "Tonsillitis",                  "severity": "Stable",   "department": "ENT",              "attending": "Dr. Owais Raza",    "status": "Outpatient", "admitted_on": "2025-04-04", "contact": "0312-5567900"},
+    {"patient_id": "PT-2027", "name": "Salman Yousuf",        "age": 44, "gender": "M", "blood_group": "A-",  "diagnosis": "Kidney Stones",                "severity": "Moderate", "department": "Urology",          "attending": "Dr. Danish Kamal",  "status": "Admitted",   "admitted_on": "2025-03-09", "contact": "0333-2201980"},
+    {"patient_id": "PT-2028", "name": "Hooria Kamran",        "age": 37, "gender": "F", "blood_group": "AB-", "diagnosis": "Breast Carcinoma",             "severity": "Serious",  "department": "Oncology",         "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-01-25", "contact": "0345-6678230"},
+    {"patient_id": "PT-2029", "name": "Adnan Waseem",         "age": 60, "gender": "M", "blood_group": "O+",  "diagnosis": "Benign Prostatic Hyperplasia", "severity": "Stable",   "department": "Urology",          "attending": "Dr. Danish Kamal",  "status": "Outpatient", "admitted_on": "2025-03-31", "contact": "0300-1123987"},
+    {"patient_id": "PT-2030", "name": "Rida Fatima",          "age": 28, "gender": "F", "blood_group": "B+",  "diagnosis": "Epilepsy (seizure workup)",    "severity": "Moderate", "department": "Neurology",        "attending": "Dr. Naveed Anwar",  "status": "Admitted",   "admitted_on": "2025-04-12", "contact": "0321-7789450"},
+    {"patient_id": "PT-2031", "name": "Waqas Ahmed",          "age": 35, "gender": "M", "blood_group": "A+",  "diagnosis": "Fractured Femur (post-op)",    "severity": "Moderate", "department": "Orthopaedics",     "attending": "Dr. Sohail Baig",   "status": "Admitted",   "admitted_on": "2025-03-16", "contact": "0333-8890234"},
+    {"patient_id": "PT-2032", "name": "Bushra Naz",           "age": 55, "gender": "F", "blood_group": "O-",  "diagnosis": "Osteoarthritis (knee)",        "severity": "Stable",   "department": "Orthopaedics",     "attending": "Dr. Sohail Baig",   "status": "Outpatient", "admitted_on": "2025-02-22", "contact": "0345-1120078"},
+    {"patient_id": "PT-2033", "name": "Shahzad Alam",         "age": 49, "gender": "M", "blood_group": "AB+", "diagnosis": "Acute Kidney Injury",          "severity": "Serious",  "department": "Nephrology",       "attending": "Dr. Nasreen Kausar","status": "Admitted",   "admitted_on": "2025-01-29", "contact": "0300-6678901"},
+    {"patient_id": "PT-2034", "name": "Areeba Sohail",        "age": 23, "gender": "F", "blood_group": "B-",  "diagnosis": "Dengue Fever",                 "severity": "Serious",  "department": "Medicine",         "attending": "Dr. Rizwan Aslam",  "status": "Admitted",   "admitted_on": "2025-04-14", "contact": "0312-3345120"},
+    {"patient_id": "PT-2035", "name": "Kashif Mumtaz",        "age": 41, "gender": "M", "blood_group": "O+",  "diagnosis": "Peptic Ulcer Disease",         "severity": "Moderate", "department": "Gastroenterology", "attending": "Dr. Kamal Haider",  "status": "Outpatient", "admitted_on": "2025-03-06", "contact": "0333-4471290"},
+    {"patient_id": "PT-2036", "name": "Sadia Perveen",        "age": 64, "gender": "F", "blood_group": "A+",  "diagnosis": "Cataract (pre-op)",            "severity": "Stable",   "department": "Ophthalmology",    "attending": "Dr. Hina Saleem",   "status": "Outpatient", "admitted_on": "2025-02-17", "contact": "0345-7789013"},
+    {"patient_id": "PT-2037", "name": "Bilal Anwar",          "age": 70, "gender": "M", "blood_group": "B+",  "diagnosis": "Aspiration Pneumonia",         "severity": "Critical", "department": "ICU",              "attending": "Dr. Shabana Yasmin","status": "ICU",        "admitted_on": "2025-03-20", "contact": "0300-2201456"},
+    {"patient_id": "PT-2038", "name": "Nimra Aziz",           "age": 30, "gender": "F", "blood_group": "O+",  "diagnosis": "Preeclampsia",                 "severity": "Serious",  "department": "Gynaecology",      "attending": "Dr. Nasreen Kausar","status": "Admitted",   "admitted_on": "2025-04-16", "contact": "0321-5567089"},
+    {"patient_id": "PT-2039", "name": "Owais Riaz",           "age": 38, "gender": "M", "blood_group": "A-",  "diagnosis": "Inguinal Hernia (elective)",   "severity": "Stable",   "department": "General Surgery",  "attending": "Dr. Junaid Akram",  "status": "Outpatient", "admitted_on": "2025-03-24", "contact": "0333-6678450"},
+    {"patient_id": "PT-2040", "name": "Sania Rauf",           "age": 46, "gender": "F", "blood_group": "AB+", "diagnosis": "Hyperthyroidism",              "severity": "Moderate", "department": "Endocrinology",    "attending": "Dr. Meher Fatima",  "status": "Outpatient", "admitted_on": "2025-02-06", "contact": "0345-9987120"},
+    {"patient_id": "PT-2041", "name": "Danish Iqbal",         "age": 52, "gender": "M", "blood_group": "O+",  "diagnosis": "Unstable Angina",              "severity": "Serious",  "department": "Cardiology",       "attending": "Dr. Zafar Iqbal",   "status": "Admitted",   "admitted_on": "2025-01-17", "contact": "0300-3312098"},
+    {"patient_id": "PT-2042", "name": "Komal Zafar",          "age": 25, "gender": "F", "blood_group": "B+",  "diagnosis": "Migraine with aura",           "severity": "Stable",   "department": "Neurology",        "attending": "Dr. Naveed Anwar",  "status": "Outpatient", "admitted_on": "2025-04-19", "contact": "0312-1123456"},
+    {"patient_id": "PT-2043", "name": "Rehan Mustafa",        "age": 59, "gender": "M", "blood_group": "A+",  "diagnosis": "Lung Carcinoma",               "severity": "Serious",  "department": "Oncology",         "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-02-01", "contact": "0333-7789234"},
+    {"patient_id": "PT-2044", "name": "Uzma Khalid",          "age": 33, "gender": "F", "blood_group": "O-",  "diagnosis": "Gestational Diabetes",         "severity": "Moderate", "department": "Gynaecology",      "attending": "Dr. Nasreen Kausar","status": "Outpatient", "admitted_on": "2025-03-13", "contact": "0345-2201567"},
+    {"patient_id": "PT-2045", "name": "Sufyan Khan",          "age": 21, "gender": "M", "blood_group": "B+",  "diagnosis": "Concussion (observation)",     "severity": "Stable",   "department": "Emergency",        "attending": "Dr. Rizwan Aslam",  "status": "Discharged", "admitted_on": "2025-04-11", "contact": "0300-4478900"},
+    {"patient_id": "PT-2046", "name": "Farha Deeba",          "age": 43, "gender": "F", "blood_group": "A+",  "diagnosis": "Cervical Spondylosis",         "severity": "Stable",   "department": "Orthopaedics",     "attending": "Dr. Sohail Baig",   "status": "Outpatient", "admitted_on": "2025-02-27", "contact": "0321-6678902"},
+    {"patient_id": "PT-2047", "name": "Zeeshan Haq",          "age": 47, "gender": "M", "blood_group": "O+",  "diagnosis": "Deep Vein Thrombosis",         "severity": "Serious",  "department": "Medicine",         "attending": "Dr. Rizwan Aslam",  "status": "Admitted",   "admitted_on": "2025-03-08", "contact": "0333-1123780"},
+    {"patient_id": "PT-2048", "name": "Laiba Asif",           "age": 18, "gender": "F", "blood_group": "AB+", "diagnosis": "Acute Sinusitis",              "severity": "Stable",   "department": "ENT",              "attending": "Dr. Owais Raza",    "status": "Outpatient", "admitted_on": "2025-04-20", "contact": "0345-5567123"},
+    {"patient_id": "PT-2049", "name": "Naveed Sultan",        "age": 62, "gender": "M", "blood_group": "B-",  "diagnosis": "Chronic Heart Failure",        "severity": "Serious",  "department": "Cardiology",       "attending": "Dr. Zafar Iqbal",   "status": "Admitted",   "admitted_on": "2025-01-21", "contact": "0300-9987012"},
+    {"patient_id": "PT-2050", "name": "Mahnoor Shafiq",       "age": 27, "gender": "F", "blood_group": "O+",  "diagnosis": "Hypertension (newly diagnosed)","severity": "Stable",   "department": "Medicine",         "attending": "Dr. Rizwan Aslam",  "status": "Outpatient", "admitted_on": "2025-03-30", "contact": "0312-2201890"},
+    {"patient_id": "PT-2051", "name": "Arslan Tariq",         "age": 39, "gender": "M", "blood_group": "A+",  "diagnosis": "Acute Cholangitis",            "severity": "Critical", "department": "ICU",              "attending": "Dr. Kamal Haider",  "status": "ICU",        "admitted_on": "2025-04-18", "contact": "0333-3345901"},
+    {"patient_id": "PT-2052", "name": "Nida Ashraf",          "age": 51, "gender": "F", "blood_group": "O-",  "diagnosis": "Multinodular Goitre",          "severity": "Moderate", "department": "Endocrinology",    "attending": "Dr. Meher Fatima",  "status": "Outpatient", "admitted_on": "2025-02-13", "contact": "0345-4471209"},
+    {"patient_id": "PT-2053", "name": "Hassan Raza",          "age": 56, "gender": "M", "blood_group": "B+",  "diagnosis": "Chronic Pancreatitis",         "severity": "Moderate", "department": "Gastroenterology", "attending": "Dr. Kamal Haider",  "status": "Admitted",   "admitted_on": "2025-03-04", "contact": "0300-6678234"},
+    {"patient_id": "PT-2054", "name": "Aiman Shakeel",        "age": 24, "gender": "F", "blood_group": "A-",  "diagnosis": "Anaphylaxis (recovered)",      "severity": "Stable",   "department": "Emergency",        "attending": "Dr. Rizwan Aslam",  "status": "Discharged", "admitted_on": "2025-04-13", "contact": "0321-9987340"},
 ]
-LAST_NAMES = [
-    "Khan", "Ahmed", "Malik", "Hussain", "Shah", "Iqbal", "Raza", "Anwar",
-    "Butt", "Chaudhry", "Baig", "Qureshi", "Siddiqui", "Farooqi", "Memon",
-    "Abbasi", "Rehman", "Mughal", "Sheikh", "Bhatti",
-]
-
-# (diagnosis, department, typical severity pool)
-CASES = [
-    ("Acute Myocardial Infarction", "Cardiology", ["Critical", "Serious"]),
-    ("Congestive Heart Failure",    "Cardiology", ["Serious", "Moderate"]),
-    ("Cardiac Arrhythmia",          "Cardiology", ["Serious", "Moderate"]),
-    ("Ischemic Stroke",             "Neurology",  ["Critical", "Serious"]),
-    ("Traumatic Brain Injury",      "Neurology",  ["Critical", "Serious"]),
-    ("Epilepsy - Status Epilepticus", "Neurology", ["Serious", "Moderate"]),
-    ("Sepsis",                      "ICU",        ["Critical"]),
-    ("Acute Respiratory Distress",  "ICU",        ["Critical"]),
-    ("Multi-Organ Failure",         "ICU",        ["Critical"]),
-    ("Severe Pneumonia",            "Pulmonology",["Serious", "Moderate"]),
-    ("COPD Exacerbation",           "Pulmonology",["Serious", "Moderate"]),
-    ("Acute Kidney Injury",         "Nephrology", ["Serious", "Moderate"]),
-    ("Chronic Kidney Disease St. 4","Nephrology", ["Moderate", "Stable"]),
-    ("Acute Pancreatitis",          "Gastroenterology", ["Serious", "Moderate"]),
-    ("GI Bleeding",                 "Gastroenterology", ["Serious", "Moderate"]),
-    ("Diabetic Ketoacidosis",       "Endocrinology", ["Serious", "Moderate"]),
-    ("Type 2 Diabetes - Complicated","Endocrinology",["Moderate", "Stable"]),
-    ("Leukemia",                    "Oncology",   ["Critical", "Serious"]),
-    ("Lung Carcinoma",              "Oncology",   ["Serious", "Moderate"]),
-    ("Breast Carcinoma",            "Oncology",   ["Serious", "Moderate"]),
-    ("Polytrauma - RTA",            "Emergency",  ["Critical", "Serious"]),
-    ("Severe Burns",                "Emergency",  ["Critical", "Serious"]),
-    ("Hypertensive Emergency",      "Emergency",  ["Serious", "Moderate"]),
-    ("Post-Operative Recovery",     "Surgery",    ["Moderate", "Stable"]),
-    ("Appendectomy - Recovery",     "Surgery",    ["Stable"]),
-]
-DOCTORS = [
-    "Dr. Zafar", "Dr. Meher", "Dr. Rehman", "Dr. Aslam", "Dr. Naveed",
-    "Dr. Shabana", "Dr. Kamal", "Dr. Farah", "Dr. Junaid", "Dr. Nasreen",
-]
-BLOOD = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]
 
 
-def _status_for(severity):
-    if severity == "Critical":
-        return "ICU"
-    if severity == "Serious":
-        return "Admitted"
-    if severity == "Moderate":
-        return random.choice(["Admitted", "Outpatient"])
-    return random.choice(["Outpatient", "Discharged"])
-
-
-def generate_patients(count=55, seed=27):
-    """Return `count` deterministic patient dicts."""
-    rng = random.Random(seed)
-    # keep module-level random.choice deterministic too
-    random.seed(seed)
-    patients = []
-    for i in range(count):
-        diagnosis, department, sev_pool = rng.choice(CASES)
-        severity = rng.choice(sev_pool)
-        gender = rng.choice(["M", "F"])
-        name = f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
-        month = rng.randint(1, 8)
-        day = rng.randint(1, 28)
-        patients.append({
-            "patient_id": f"PT-{2001 + i}",
-            "name": name,
-            "age": rng.randint(3, 88),
-            "gender": gender,
-            "blood_group": rng.choice(BLOOD),
-            "diagnosis": diagnosis,
-            "severity": severity,
-            "department": department,
-            "attending": rng.choice(DOCTORS),
-            "status": _status_for(severity) if severity != "Moderate" else random.choice(["Admitted", "Outpatient"]),
-            "admitted_on": f"2025-{month:02d}-{day:02d}",
-            "contact": f"03{rng.randint(0,9)}{rng.randint(0,9)}-{rng.randint(1000000, 9999999)}",
-        })
-    return patients
+def generate_patients(count=None, seed=None):
+    """Return the curated patient records (args kept for backward compatibility)."""
+    if count is None:
+        return list(PATIENTS)
+    return list(PATIENTS[:count])

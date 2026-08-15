@@ -90,15 +90,9 @@ def launcher():
               bg=TEAL, fg="white", activebackground=MINT, relief="flat", padx=10, pady=10,
               cursor="hand2", command=lambda: open_gui("admin_dashboard.py")).pack(fill="x", pady=6)
 
-    creds = tk.Frame(root, bg=BG)
-    creds.pack(pady=(4, 0), padx=30, fill="x")
-    tk.Label(creds, text="Accounts", font=("Segoe UI", 11, "bold"), bg=BG, fg=TEXT).pack(anchor="w")
-    for line in ("Admin :  Abdul Rehman  /  AbdulRehman2711",
-                 "User  :  user  /  User@123",
-                 "Viewer:  viewer  /  Viewer@123"):
-        tk.Label(creds, text=line, font=("Consolas", 10), bg=BG, fg=MUTED).pack(anchor="w")
-    tk.Label(root, text="MFA: click 'Email me a code' on the login screen.",
-             font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(pady=(10, 0))
+    tk.Label(root, text="Sign in with your account, or create a new one.\n"
+                        "MFA: click 'Email me a code' on the login screen.",
+             font=("Segoe UI", 9), bg=BG, fg=MUTED, justify="center").pack(pady=(14, 0))
 
     root.mainloop()
 

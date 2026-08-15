@@ -76,7 +76,7 @@ class AdminDashboard:
                   command=self.do_login).pack(fill="x", pady=(10, 6))
         self.root.bind("<Return>", lambda _e: self.do_login())
 
-        tk.Label(self.root, text="Admin:  Abdul Rehman / AbdulRehman2711   •   code: click 'Email me a code' or  python backend/show_code.py \"Abdul Rehman\"",
+        tk.Label(self.root, text="Administrator sign-in  •  use 'Email me a code' for your MFA code",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(side="bottom", pady=18)
 
     def do_request_otp(self):
