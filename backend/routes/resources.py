@@ -10,13 +10,37 @@ Each app serves real (synthetic) confidential data loaded from backend/data/*.
 """
 
 from flask import Blueprint, jsonify
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
 
 import datastore
 from models import ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
 from security import roles_required, record_access
 
 resources_bp = Blueprint("resources", __name__)
+
+# The full RBAC matrix in one place — used to show each user their own rules.
+PERMISSION_MATRIX = [
+    ("HR Portal",                       {ROLE_ADMIN, ROLE_USER}),
+    ("Finance Dashboard",               {ROLE_ADMIN}),
+    ("Patient Records (view)",          {ROLE_ADMIN, ROLE_USER}),
+    ("Document Manager",                {ROLE_ADMIN, ROLE_USER, ROLE_VIEWER}),
+    ("Security Dashboard / Monitoring", {ROLE_ADMIN}),
+    ("Manage Users & Patients (CRUD)",  {ROLE_ADMIN}),
+]
+
+
+@resources_bp.route("/api/my-permissions", methods=["GET"])
+@jwt_required()
+def my_permissions():
+    """Return the signed-in user's role and exactly what it may / may not do."""
+    role = get_jwt().get("role", "")
+    return jsonify({
+        "role": role,
+        "permissions": [
+            {"feature": feature, "allowed": role in roles}
+            for feature, roles in PERMISSION_MATRIX
+        ],
+    })
 
 
 @resources_bp.route("/api/protected/hr", methods=["GET"])

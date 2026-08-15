@@ -27,6 +27,26 @@ from security import roles_required, record_access
 
 admin_bp = Blueprint("admin", __name__)
 
+_RESOURCE_NAMES = {
+    "/api/protected/hr": "HR Portal",
+    "/api/protected/finance": "Finance Dashboard",
+    "/api/protected/patients": "Patient Records",
+    "/api/protected/documents": "Document Manager",
+    "/api/logs": "Access Logs (admin)",
+    "/api/metrics": "Security Metrics (admin)",
+    "/api/alerts": "Security Alerts (admin)",
+    "/api/login-history": "Login History (admin)",
+    "/api/site-access": "Site Access (admin)",
+    "/api/users": "User Management (admin)",
+    "/api/audit/verify": "Audit Log (admin)",
+}
+
+
+def _friendly_resource(resource):
+    if not resource:
+        return "a protected resource"
+    return _RESOURCE_NAMES.get(resource, resource)
+
 
 @admin_bp.route("/api/logs", methods=["GET"])
 @roles_required(ROLE_ADMIN)
@@ -91,20 +111,32 @@ def get_alerts():
                 "detail": f"{count} failed logins in the last 15 minutes",
             })
 
-    # Privilege probing: >= 3 DENIED access events per user in the window.
+    # Access-rule violations: ANY denied attempt is flagged immediately, and
+    # escalated to "privilege probing" once it repeats.
     denied = (
         AccessLog.query.filter(
             AccessLog.status == "DENIED", AccessLog.timestamp >= window
-        ).all()
+        ).order_by(AccessLog.timestamp.desc()).all()
     )
-    per_user_denied = Counter(d.username for d in denied)
-    for username, count in per_user_denied.items():
+    denied_by_user = {}
+    for d in denied:
+        denied_by_user.setdefault(d.username, []).append(_friendly_resource(d.resource))
+    for username, resources in denied_by_user.items():
+        count = len(resources)
+        tried = ", ".join(dict.fromkeys(resources[:4]))  # unique, keep order
         if count >= 3:
             alerts.append({
-                "severity": "MEDIUM",
-                "type": "Possible privilege escalation / probing",
+                "severity": "HIGH",
+                "type": "Privilege escalation / probing",
                 "subject": username or "unknown",
-                "detail": f"{count} denied access attempts in the last 15 minutes",
+                "detail": f"{count} unauthorized attempts (rule violations) — tried: {tried}",
+            })
+        else:
+            alerts.append({
+                "severity": "MEDIUM",
+                "type": "Access rule violation",
+                "subject": username or "unknown",
+                "detail": f"{count} unauthorized attempt(s) — tried: {tried}",
             })
 
     # Locked accounts.

@@ -100,9 +100,12 @@
     </div>
   </div>
   <div class="wrap">
-    <div id="admin-bar" class="row hidden">
-      <button class="btn sm" onclick="openMonitoring()">🛡 Security Monitoring</button>
-      <button class="btn sm" onclick="openPatientsAdmin()">🏥 Manage Patients</button>
+    <div class="row">
+      <button class="btn sm" onclick="openPermissions()">📜 My Permissions</button>
+      <span id="admin-bar" class="row hidden" style="margin:0">
+        <button class="btn sm" onclick="openMonitoring()">🛡 Security Monitoring</button>
+        <button class="btn sm" onclick="openPatientsAdmin()">🏥 Manage Patients</button>
+      </span>
     </div>
     <div class="tiles" id="tiles"></div>
     <div id="panel" class="panel hidden"></div>
@@ -208,6 +211,23 @@ function renderDocs(d){
   let h="✅ Document Manager\n\n<table><tr><th>Document</th><th>Size</th></tr>";
   (d.data.documents||[]).forEach(x=>{h+=`<tr><td>${x.name}</td><td>${x.size_bytes} B</td></tr>`;});
   return h+"</table>";
+}
+
+/* ---------- My Permissions (rules) ---------- */
+async function openPermissions(){
+  stopMonitor();
+  const p=document.getElementById("panel"); p.classList.remove("hidden");
+  try{
+    const d=await api("/api/my-permissions");
+    let h=`<strong>📜 My Access Rules — Role: ${d.role}</strong>\n`;
+    h+="Ye aap ki permissions hain. ❌ wali cheez access karne par admin ko alert milega.\n\n";
+    h+="<table><tr><th>Feature / Resource</th><th>Access</th></tr>";
+    d.permissions.forEach(x=>{
+      h+=`<tr><td>${x.feature}</td><td class="${x.allowed?'st-ok':'sev-Critical'}">${x.allowed?'✅ Allowed':'❌ Not allowed'}</td></tr>`;
+    });
+    h+="</table>";
+    p.innerHTML=h;
+  }catch(e){p.textContent="Error: "+e.message;}
 }
 
 /* ---------- Admin: LIVE monitoring ---------- */
