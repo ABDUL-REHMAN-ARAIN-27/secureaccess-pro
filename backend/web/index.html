@@ -18,23 +18,26 @@
   /* ---------- Login / Register (navy) ---------- */
   .authwrap{min-height:100vh;background:var(--navy);display:flex;flex-direction:column;
     align-items:center;justify-content:center;padding:20px}
-  .brand{color:#fff;font-size:34px;font-weight:bold;margin:0}
-  .brand small{font-weight:normal}
-  .tagline{color:#bdc3c7;font-size:15px;margin:8px 0 26px}
-  .authcard{background:var(--navy2);border-radius:6px;padding:34px 40px;width:100%;max-width:520px}
-  .frow{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:12px;margin-bottom:14px}
-  .frow label{color:#ecf0f1;font-size:15px;text-align:right}
-  .frow input{padding:9px;border:none;border-radius:3px;font-size:15px;width:100%}
-  .authbtns{display:flex;gap:12px;justify-content:center;margin-top:20px}
-  .btn-green{background:var(--green);color:#fff;padding:11px 26px;font-size:15px}
+  .brand{color:#fff;font-size:30px;font-weight:bold;margin:0}
+  .tagline{color:#aeb6bd;font-size:14px;margin:6px 0 22px}
+  .authcard{background:var(--navy2);border-radius:8px;padding:30px 32px;width:100%;max-width:410px;
+    box-shadow:0 10px 34px rgba(0,0,0,.28)}
+  .frow{margin-bottom:14px}
+  .frow label{display:block;color:#cfd6dc;font-size:13px;margin-bottom:5px}
+  .frow input{padding:11px;border:1px solid #46617a;border-radius:5px;font-size:14px;width:100%;
+    background:#fff;color:#2c3e50}
+  .frow input:focus{outline:none;border-color:#5dade2}
+  .otp-link{text-align:right;margin:-6px 0 4px}
+  .btn-link{background:none;color:#5dade2;text-decoration:none;font-weight:600;font-size:13px;padding:2px}
+  .btn-link:hover{text-decoration:underline}
+  .authbtns{display:flex;gap:10px;margin-top:18px}
+  .btn-green{background:var(--green);color:#fff;padding:12px;font-size:14px;flex:1}
   .btn-green:hover{background:var(--greenh)}
-  .btn-blue{background:var(--blue);color:#fff;padding:11px 26px;font-size:15px}
+  .btn-blue{background:var(--blue);color:#fff;padding:12px;font-size:14px;flex:1}
   .btn-blue:hover{background:var(--blueh)}
-  .btn-link{background:none;color:#5dade2;text-decoration:underline;font-weight:normal;padding:6px}
-  .authmsg{margin-top:14px;padding:9px;border-radius:3px;font-size:14px;display:none;text-align:center}
-  .authmsg.err{background:#c0392b;color:#fff;display:block}
-  .authmsg.ok{background:#1e8449;color:#fff;display:block}
-  .otp-note{grid-column:1/3;text-align:center}
+  .authmsg{margin-top:14px;padding:10px 12px;border-radius:5px;font-size:13px;display:none;text-align:center;line-height:1.4}
+  .authmsg.err{background:rgba(231,76,60,.18);color:#f5b7b1;border:1px solid rgba(231,76,60,.5);display:block}
+  .authmsg.ok{background:rgba(39,174,96,.18);color:#abebc6;border:1px solid rgba(39,174,96,.5);display:block}
 
   /* ---------- Dashboard ---------- */
   .header{background:var(--headbar);color:#fff;display:flex;justify-content:space-between;
@@ -84,7 +87,7 @@
     <div class="frow"><label>Username:</label><input id="li-user" autocomplete="username"></div>
     <div class="frow"><label>Password:</label><input id="li-pass" type="password" autocomplete="current-password"></div>
     <div class="frow"><label>2FA Code:</label><input id="li-otp" inputmode="numeric" placeholder="6-digit code"></div>
-    <div class="frow"><span></span><button class="btn-link" onclick="requestOtp()">✉ Email me a code</button></div>
+    <div class="otp-link"><button class="btn-link" onclick="requestOtp()">✉ Email me a code</button></div>
     <div class="authbtns">
       <button class="btn-green" onclick="login()">LOGIN</button>
       <button class="btn-blue" onclick="showRegister()">CREATE ACCOUNT</button>
