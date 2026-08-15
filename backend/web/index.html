@@ -182,10 +182,9 @@ const APPS=[
   {ico:"📁",title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
 ];
 function tabsFor(r){
-  const t=[["apps","Applications"],["perms","My Permissions"]];
   if(r==="Admin")return[["apps","Applications"],["access","Access Logs"],["login","Login History"],
-    ["site","Site Access Log"],["alerts","Security Alerts"],["patients","Patients"],["perms","My Permissions"]];
-  return t;
+    ["site","Site Access Log"],["alerts","Security Alerts"],["patients","Patients"]];
+  return[["apps","Applications"]];
 }
 let activeTab="apps";
 function enterApp(){
