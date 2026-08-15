@@ -43,6 +43,7 @@
   th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #26414a}
   th{color:var(--muted)}
   .sev-Critical,.HIGH{color:var(--danger)} .sev-Serious,.MEDIUM{color:var(--warn)}
+  .st-ok{color:var(--ok)}
   .badge{padding:10px 14px;border-radius:8px;font-weight:700;margin-top:12px}
   .badge.ok{background:rgba(46,204,113,.15);color:#aef0c8}
   .badge.bad{background:rgba(230,57,70,.15);color:#ffb3b9}
@@ -152,7 +153,7 @@ async function register(){
     setTimeout(()=>show("login"),4000);
   }catch(e){msg("rg-msg",e.message,false);}
 }
-function logout(){token=role=username=null;document.getElementById("li-otp").value="";show("login");}
+function logout(){stopMonitor();token=role=username=null;document.getElementById("li-otp").value="";show("login");}
 
 const APPS=[
   {ico:"👥",title:"HR Portal",desc:"Employee records & leave",roles:["Admin","User"],path:"/api/protected/hr"},
@@ -162,6 +163,7 @@ const APPS=[
 ];
 
 function enterApp(){
+  stopMonitor();
   show("app");
   document.getElementById("app-who").textContent="Signed in as "+username+" ("+role+")";
   document.getElementById("admin-bar").classList.toggle("hidden", role!=="Admin");
@@ -176,6 +178,7 @@ function enterApp(){
 }
 
 async function openResource(a){
+  stopMonitor();
   const p=document.getElementById("panel"); p.classList.remove("hidden");
   try{
     const d=await api(a.path);
@@ -207,24 +210,55 @@ function renderDocs(d){
   return h+"</table>";
 }
 
-/* ---------- Admin: monitoring ---------- */
+/* ---------- Admin: LIVE monitoring ---------- */
+let monitorTimer=null;
+function stopMonitor(){ if(monitorTimer){clearInterval(monitorTimer); monitorTimer=null;} }
+
 async function openMonitoring(){
   const p=document.getElementById("panel"); p.classList.remove("hidden");
+  await renderMonitoring(p);
+  stopMonitor();
+  monitorTimer=setInterval(()=>renderMonitoring(p), 3000);   // live auto-refresh
+}
+
+async function renderMonitoring(p){
+  const t=x=>(x||"").replace("T"," ").slice(0,19);
+  const scls=s=>(["DENIED","FAILED","LOCKED"].includes(s)?"sev-Critical":(["GRANTED","SUCCESS"].includes(s)?"st-ok":""));
   try{
-    const [m,al,au]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify")]);
-    let h=`<div class="badge ${au.intact?"ok":"bad"}">🔒 Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING at #"+au.broken_at}</div>`;
-    h+=`\n\nUsers ${m.total_users} · Logins ${m.total_logins} · Failed ${m.failed_logins} · Denied ${m.denied_access} · Locked ${m.locked_accounts}\n\n`;
+    const [m,al,au,logs,hist]=await Promise.all([
+      api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),
+      api("/api/logs?limit=40"),api("/api/login-history?limit=20")]);
+
+    let h=`<div class="row" style="margin:0 0 8px"><strong>🛡 Live Security Monitoring</strong>`
+        +`<span style="color:var(--mint);font-size:12px">● auto-refreshing every 3s</span></div>`;
+    h+=`<div class="badge ${au.intact?"ok":"bad"}">🔒 Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING at #"+au.broken_at}</div>`;
+    h+=`\n\nUsers ${m.total_users} · Logins ${m.total_logins} · Failed ${m.failed_logins} · Granted ${m.granted_access} · Denied ${m.denied_access} · Locked ${m.locked_accounts}\n`;
+
     h+=`<strong>🚨 Security Alerts (${al.count})</strong>`;
     h+="<table><tr><th>Severity</th><th>Type</th><th>Subject</th><th>Detail</th></tr>";
     al.alerts.forEach(a=>{h+=`<tr><td class="${a.severity}">${a.severity}</td><td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td></tr>`;});
     if(!al.alerts.length)h+="<tr><td colspan=4>✓ No active threats</td></tr>";
     h+="</table>";
+
+    // WHO is doing WHAT — live activity feed
+    h+=`<strong>📋 Activity Logs — kaun user/viewer kya kar raha hai</strong>`;
+    h+="<table><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Status</th><th>IP</th></tr>";
+    logs.forEach(r=>{h+=`<tr><td>${t(r.timestamp)}</td><td>${r.username||""}</td><td>${r.action||""}</td><td>${r.resource||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.ip_address||""}</td></tr>`;});
+    h+="</table>";
+
+    // Login attempts
+    h+=`<strong>🔑 Login History</strong>`;
+    h+="<table><tr><th>Time</th><th>User</th><th>Status</th><th>Reason</th><th>IP</th></tr>";
+    hist.forEach(r=>{h+=`<tr><td>${t(r.login_time)}</td><td>${r.username||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.failure_reason||""}</td><td>${r.ip_address||""}</td></tr>`;});
+    h+="</table>";
+
     p.innerHTML=h;
-  }catch(e){p.textContent="Error: "+e.message;}
+  }catch(e){ p.textContent="Error: "+e.message; stopMonitor(); }
 }
 
 /* ---------- Admin: patient CRUD ---------- */
 async function openPatientsAdmin(){
+  stopMonitor();
   const p=document.getElementById("panel"); p.classList.remove("hidden");
   try{
     const d=await api("/api/protected/patients");
