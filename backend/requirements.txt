@@ -17,3 +17,8 @@ gunicorn==22.0.0
 #   clamd==1.0.2
 # For stronger content-based MIME detection (falls back to a safe sniffer):
 #   python-magic==0.4.27
+
+# --- Optional: UEBA IsolationForest engine (behaviour analytics) ---
+# The default numpy baseline needs nothing extra. For the ML engine set
+# UEBA_MODEL=iforest and install:
+#   scikit-learn==1.5.2

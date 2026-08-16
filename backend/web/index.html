@@ -444,10 +444,10 @@ function pipeStrip(){
     (i<steps.length-1?`<span class="rk-arrow">&rarr;</span>`:"")).join("")+`</div>`;
 }
 async function renderRisk(){
-  try{const [m,sessions,events,devices]=await Promise.all(
-    [api("/api/risk-metrics"),api("/api/sessions"),api("/api/risk-events"),api("/api/devices")]);
+  try{const [m,sessions,events,devices,profiles]=await Promise.all(
+    [api("/api/risk-metrics"),api("/api/sessions"),api("/api/risk-events"),api("/api/devices"),api("/api/behavior-profiles")]);
     let h=`<h2 class="rk-title">Risk &amp; Policy Engine</h2>`;
-    h+=`<p class="subtitle">Risk-based access control applies to User and Viewer accounts. Administrator access is trusted.</p>`;
+    h+=`<p class="subtitle">Rule-based CVSS scoring combined with AI behaviour analytics (UEBA). Applies to User and Viewer accounts; administrator access is trusted.</p>`;
     h+=pipeStrip();
     h+=cvssLegend();
     h+=`<div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
@@ -485,6 +485,19 @@ async function renderRisk(){
         <td class="muted" style="font-size:12px">${e.factors||""}</td></tr>`;
     });
     if(!events.length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No risk events yet.</td></tr>";
+    h+="</table>";
+
+    // UEBA — behaviour analytics
+    h+=`<div class="rk-sec">Behaviour Analytics <span class="tag">UEBA — per-user learned baseline &amp; anomaly</span></div>`;
+    h+=`<table class="rk"><tr><th>User</th><th>Logins Learned</th><th>Typical Hours</th><th>Known IPs</th><th>Known Devices</th><th>Last Anomaly</th><th>Model</th></tr>`;
+    (profiles||[]).forEach(p=>{
+      const lvl=p.last_anomaly>=30?"Medium":(p.last_anomaly>0?"Low":"None");
+      const st=p.learning?`<span class="rk-badge rk-none">Learning</span>`:`<span class="rk-badge rk-low">Active</span>`;
+      h+=`<tr><td><b>${p.username}</b></td><td>${p.login_count}</td><td class="muted">${(p.typical_hours||[]).join(", ")||"—"}</td>
+        <td>${p.known_ips}</td><td>${p.known_devices}</td>
+        <td>${riskBadge(lvl)} ${riskMeter(lvl,p.last_anomaly_cvss)}</td><td>${st}</td></tr>`;
+    });
+    if(!(profiles||[]).length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No behaviour profiles yet.</td></tr>";
     h+="</table>";
 
     // Device trust

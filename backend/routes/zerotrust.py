@@ -20,7 +20,7 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 
 from extensions import db
-from models import SessionToken, RiskEvent, TrustedDevice, ROLE_ADMIN
+from models import SessionToken, RiskEvent, TrustedDevice, BehaviorProfile, ROLE_ADMIN
 from security import roles_required, record_access
 import risk as risk_engine
 
@@ -54,6 +54,14 @@ def risk_metrics():
         ).count(),
         "generated_at": datetime.utcnow().isoformat(),
     })
+
+
+@zerotrust_bp.route("/api/behavior-profiles", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def behavior_profiles():
+    """UEBA baselines learned per user (for the Behaviour Analytics panel)."""
+    rows = BehaviorProfile.query.order_by(BehaviorProfile.last_anomaly.desc()).limit(100).all()
+    return jsonify([p.to_dict() for p in rows])
 
 
 @zerotrust_bp.route("/api/sessions", methods=["GET"])

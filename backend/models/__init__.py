@@ -9,6 +9,7 @@ from .file import (
     SCAN_PENDING, SCAN_CLEAN, SCAN_SUSPICIOUS, SCAN_MALICIOUS, SCAN_ERROR,
     REVIEW_PENDING, REVIEW_APPROVED, REVIEW_REJECTED, REVIEW_QUARANTINED,
 )
+from .behavior import BehaviorProfile
 
 __all__ = [
     "User",
@@ -28,4 +29,5 @@ __all__ = [
     "UploadedFile",
     "SCAN_PENDING", "SCAN_CLEAN", "SCAN_SUSPICIOUS", "SCAN_MALICIOUS", "SCAN_ERROR",
     "REVIEW_PENDING", "REVIEW_APPROVED", "REVIEW_REJECTED", "REVIEW_QUARANTINED",
+    "BehaviorProfile",
 ]

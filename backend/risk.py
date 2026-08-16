@@ -149,6 +149,16 @@ def score_login(user, ip, device_fp):
         score += cfg["RISK_WEIGHT_BLOCKED"]
         factors.append("account is blocked")
 
+    # UEBA — behaviour-based adaptive anomaly (explainable), added on top of the
+    # rule-based signals. Learns each user's normal pattern; silent at cold start.
+    try:
+        import ueba
+        ueba_score, ueba_factors = ueba.evaluate(user.username)
+        score += ueba_score
+        factors.extend(ueba_factors)
+    except Exception:  # pragma: no cover - UEBA must never break login scoring
+        pass
+
     score = min(score, 100)
     return score, _band(score), factors, known_device
 

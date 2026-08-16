@@ -36,6 +36,7 @@ _TRACK_SKIP = {
     "zerotrust.list_sessions",
     "zerotrust.list_devices",
     "zerotrust.risk_metrics",
+    "zerotrust.behavior_profiles",
     "files.list_my_files",
     "files.admin_list_files",
     "files.admin_file_metrics",

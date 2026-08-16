@@ -92,6 +92,27 @@ set `SCANNER_MODE=clamav`. Test detection with the standard **EICAR** file — n
 means "no known signature matched", not "guaranteed safe". The demo engine is for
 demonstration, not production antivirus coverage.
 
+### Phase 4 — AI / UEBA adaptive risk (behaviour analytics)
+
+Upgrades the risk engine from purely rule-based to **behaviour-aware**. A
+per-user **User & Entity Behaviour Analytics** model learns each account's normal
+login pattern and adds an **explainable** anomaly on top of the CVSS score.
+
+| Aspect | Implementation |
+|---|---|
+| **Model** | Unsupervised per-user baseline (`ueba.py`, numpy): login-hour distribution, inter-login intervals, known IPs/devices. Optional **scikit-learn IsolationForest** engine (`UEBA_MODEL=iforest`, used only if installed). |
+| **Signals** | Unusual login *hour for this user* (personal, not just generic off-hours) and login-burst velocity (possible automation). |
+| **Explainable** | Every anomaly point carries a plain reason, e.g. *"unusual login hour 03:00 for this user (usual: 14:00)"* — shown live in the Risk Decision Feed. |
+| **Cold-start safe** | Stays silent until `UEBA_MIN_LOGINS` logins are learned, so new accounts are never falsely flagged. |
+| **Learning** | Each successful login folds into the profile (`observe_login`); admin is exempt from scoring. |
+| **Dashboard** | New **Behaviour Analytics** panel on the Risk & Policy tab: logins learned, typical hours, known IPs/devices, last anomaly (CVSS) and Learning/Active state. |
+
+New model `behavior_profiles`; new file `ueba.py`; new admin endpoint
+`GET /api/behavior-profiles`. Optional dep: `pip install scikit-learn`.
+
+**Limitation:** a lightweight behavioural model trained on small per-user data — a
+demonstrator of adaptive/AI-driven risk, not an enterprise ML detection product.
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |
@@ -117,6 +138,7 @@ secureaccess-pro/
 │   ├── risk.py              # Phase 2 risk engine + policy engine
 │   ├── scanner.py          # Phase 3 malware scanner (demo / ClamAV)
 │   ├── filevault.py        # Phase 3 upload validation + secure storage
+│   ├── ueba.py             # Phase 4 behaviour analytics (AI adaptive risk)
 │   ├── seed.py              # create Admin/User/Viewer demo accounts
 │   ├── show_code.py         # print a user's current TOTP (demo helper)
 │   ├── models/              # User, AccessLog, LoginHistory, SiteAccess,

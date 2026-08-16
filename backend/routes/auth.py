@@ -188,6 +188,13 @@ def login():
     risk_engine.log_risk_event(username, "LOGIN", "Authentication", ip, device_fp,
                                score, level, decision, factors)
 
+    # UEBA learns this successful login into the user's behaviour baseline.
+    try:
+        import ueba
+        ueba.observe_login(username, ip, device_fp)
+    except Exception:
+        pass
+
     _log_login(username, "SUCCESS")
     record_access(username, "LOGIN", "SYSTEM", "SUCCESS")
 

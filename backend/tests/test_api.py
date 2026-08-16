@@ -416,3 +416,47 @@ def test_admin_can_review_quarantined_file(client, totp_for):
     reject = client.post(f"/api/admin/files/{fid}/review", headers=ah, json={"decision": "reject"})
     assert reject.status_code == 200
     assert reject.get_json()["file"]["review_status"] == "REJECTED"
+
+
+# --------------------------------------------------------------------------- #
+# UEBA — AI/behaviour-based adaptive risk
+# --------------------------------------------------------------------------- #
+def test_ueba_learns_and_is_quiet_at_cold_start(client, totp_for, app):
+    # First login: no baseline yet -> UEBA must not flag ("still training").
+    resp, _ = _login_dev(client, totp_for, "user", "User@123", device="u")
+    assert not any("unusual login hour" in f for f in resp.get_json()["risk"]["factors"])
+    # A profile is created and learns the login.
+    from models import BehaviorProfile
+    with app.app_context():
+        p = BehaviorProfile.query.filter_by(username="user").first()
+        assert p is not None and p.login_count >= 1
+
+
+def test_ueba_flags_unusual_hour_after_baseline(client, totp_for, app):
+    import ueba
+    from datetime import datetime, timedelta
+    from models import BehaviorProfile
+    from extensions import db as _db
+    # Seed a baseline: many past logins concentrated at 14:00 (2 PM).
+    with app.app_context():
+        p = BehaviorProfile(username="user")
+        hist = [0] * 24
+        hist[14] = 20
+        p.set_hist(hist)
+        p.login_count = 20
+        p.set_intervals([86400] * 10)
+        p.last_login_at = datetime.utcnow() - timedelta(hours=1)
+        _db.session.add(p)
+        _db.session.commit()
+        # Evaluate a login "now" — if the current hour isn't 14:00 it should flag.
+        score, factors = ueba.evaluate("user")
+    if datetime.utcnow().hour != 14:
+        assert score > 0
+        assert any("unusual login hour" in f for f in factors)
+
+
+def test_behavior_profiles_endpoint_admin_only(client, totp_for):
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="a")
+    assert client.get("/api/behavior-profiles", headers=ah).status_code == 200
+    viewer = auth_header(token_for(client, totp_for, "viewer", "Viewer@123"))
+    assert client.get("/api/behavior-profiles", headers=viewer).status_code == 403

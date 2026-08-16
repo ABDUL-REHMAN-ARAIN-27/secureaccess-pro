@@ -140,6 +140,21 @@ class Config:
     # aggressive — see requirement 12.
     MALWARE_AUTO_BLOCK = os.environ.get("MALWARE_AUTO_BLOCK", "false").lower() == "true"
 
+    # --- UEBA: AI/behaviour-based adaptive risk ---
+    # An unsupervised per-user behaviour model (User & Entity Behaviour Analytics)
+    # that learns each account's normal login pattern and adds an *explainable*
+    # anomaly contribution on top of the rule-based CVSS score. It stays quiet
+    # until it has seen a few logins (cold-start), then flags personal deviations
+    # (unusual hour, login bursts). Engine: "baseline" (numpy statistics, no deps)
+    # or "iforest" (scikit-learn IsolationForest, used only if installed).
+    UEBA_ENABLED = os.environ.get("UEBA_ENABLED", "true").lower() == "true"
+    UEBA_MODEL = os.environ.get("UEBA_MODEL", "baseline").lower()
+    UEBA_MIN_LOGINS = int(os.environ.get("UEBA_MIN_LOGINS", "4"))   # cold-start threshold
+    UEBA_W_HOUR = int(os.environ.get("UEBA_W_HOUR", "22"))          # unusual-hour weight
+    UEBA_W_BURST = int(os.environ.get("UEBA_W_BURST", "16"))        # login-burst weight
+    UEBA_MAX = int(os.environ.get("UEBA_MAX", "35"))               # cap on UEBA contribution
+    UEBA_BURST_SECONDS = int(os.environ.get("UEBA_BURST_SECONDS", "60"))
+
     # --- Server ---
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))
