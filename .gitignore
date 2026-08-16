@@ -10,6 +10,9 @@ env/
 *.db
 backend/secureaccess_pro.db
 
+# Uploaded / quarantined files (runtime data, never committed)
+backend/var/
+
 # Environment
 .env
 

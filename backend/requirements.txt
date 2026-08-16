@@ -9,3 +9,11 @@ requests==2.32.3
 psycopg2-binary==2.9.9
 pytest==8.3.3
 gunicorn==22.0.0
+
+# --- Optional: real malware scanning (file-security module) ---
+# The default "demo" scanner (EICAR + heuristics) needs nothing extra.
+# For REAL signature scanning, run a ClamAV daemon and install the client,
+# then set SCANNER_MODE=clamav :
+#   clamd==1.0.2
+# For stronger content-based MIME detection (falls back to a safe sniffer):
+#   python-magic==0.4.27

@@ -61,6 +61,37 @@ Identity → MFA → Device → Context → Risk Score → Policy Engine
 | **Risk & Policy dashboard** | New admin tab: active sessions (with one-click revoke), a live risk-decision feed, and device-trust management. |
 | **Authenticator-app MFA** | TOTP (Google Authenticator / Authy) is a first-class second factor alongside email OTP; `provisioning_uri` returned at registration for QR enrolment. |
 
+### Phase 3 — Secure File Upload + Automated Malware Detection
+
+Zero Trust extended to **data itself**: an authenticated user may upload, but the
+file is untrusted until scanned. Flow:
+
+```
+Auth + MFA -> RBAC + Continuous Verify -> Upload -> Validate -> SHA-256
+ -> Secure temp -> Scan -> CLEAN: approved store  |  SUSPICIOUS/MALICIOUS: quarantine
+                                                     + admin alert + Critical risk event
+```
+
+| Control | Implementation |
+|---|---|
+| **Upload guard** | `@roles_required(Admin, User)` **+** `@continuous_verify` — a blocked/high-risk session cannot upload even with a valid token; Viewers cannot upload. |
+| **Validation** | Size cap (streamed), safe-filename + path-traversal rejection, **content-sniffed MIME allow-list** (extension never trusted), random server-side names. |
+| **Scanning** | Pluggable engine (`scanner.py`): **demo** = EICAR + structural heuristics (no deps); **clamav** = real signatures via the `clamd` daemon. Failures fail *closed* (SCAN_ERROR ⇒ quarantine). |
+| **Quarantine** | Unsafe files moved to a private `backend/var/quarantine` dir (outside web root, non-executable, never served to users). |
+| **Hashing** | SHA-256 per file for identification, audit and duplicate detection. |
+| **Audit** | `FILE_UPLOAD_STARTED / FILE_UPLOADED / FILE_SCAN_* / FILE_QUARANTINED / FILE_ACCESS_GRANTED|DENIED / ADMIN_REVIEWED_FILE` — written to the **same hash-chained** audit stream. |
+| **Alerts + risk** | A malicious upload surfaces in the existing **Security Alerts** and logs a **Critical** `RiskEvent`; optional `MALWARE_AUTO_BLOCK` (off by default). |
+| **Admin monitor** | New **File Security** tab: metrics, recent detections with SHA-256, and review (approve suspicious / reject / keep quarantined). Malicious files can never be approved for download. |
+
+New model `uploaded_files`. New files: `models/file.py`, `scanner.py`, `filevault.py`,
+`routes/files.py`. **Optional deps** (real scanning): `pip install clamd` + a running
+ClamAV daemon, and optionally `pip install python-magic` for stronger MIME detection;
+set `SCANNER_MODE=clamav`. Test detection with the standard **EICAR** file — never real malware.
+
+**Limitation:** signature-based scanning only detects *known* threats; a CLEAN result
+means "no known signature matched", not "guaranteed safe". The demo engine is for
+demonstration, not production antivirus coverage.
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |
@@ -84,6 +115,8 @@ secureaccess-pro/
 │   ├── extensions.py        # db + jwt instances
 │   ├── security.py          # RBAC decorator + continuous-verify guard + audit
 │   ├── risk.py              # Phase 2 risk engine + policy engine
+│   ├── scanner.py          # Phase 3 malware scanner (demo / ClamAV)
+│   ├── filevault.py        # Phase 3 upload validation + secure storage
 │   ├── seed.py              # create Admin/User/Viewer demo accounts
 │   ├── show_code.py         # print a user's current TOTP (demo helper)
 │   ├── models/              # User, AccessLog, LoginHistory, SiteAccess,

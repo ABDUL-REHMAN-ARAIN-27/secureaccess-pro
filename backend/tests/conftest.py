@@ -20,12 +20,21 @@ from models import User, Patient, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER  # noqa: E4
 from patient_seed import generate_patients  # noqa: E402
 
 
+import tempfile
+
+_TMP_FILES = tempfile.mkdtemp(prefix="sap-test-")
+
+
 class TestConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     JWT_SECRET_KEY = "test-secret"
     MAX_FAILED_ATTEMPTS = 3
     LOCKOUT_MINUTES = 15
+    # Isolate uploaded/quarantined files to a throwaway temp dir.
+    FILE_STORE_DIR = os.path.join(_TMP_FILES, "store")
+    FILE_QUARANTINE_DIR = os.path.join(_TMP_FILES, "quarantine")
+    FILE_TMP_DIR = os.path.join(_TMP_FILES, "tmp")
 
 
 DEMO = [

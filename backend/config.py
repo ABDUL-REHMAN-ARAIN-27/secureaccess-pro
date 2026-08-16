@@ -105,6 +105,41 @@ class Config:
     RISK_HIGH = int(os.environ.get("RISK_HIGH", "70"))        # CVSS 7.0
     RISK_CRITICAL = int(os.environ.get("RISK_CRITICAL", "90"))  # CVSS 9.0
 
+    # --- Secure File Upload + Malware Detection module ---
+    # Files are never served from the web root; they live under backend/var/*.
+    _VAR_DIR = os.path.join(BASE_DIR, "var")
+    FILE_STORE_DIR = os.environ.get("FILE_STORE_DIR", os.path.join(_VAR_DIR, "store"))       # clean/approved
+    FILE_QUARANTINE_DIR = os.environ.get("FILE_QUARANTINE_DIR", os.path.join(_VAR_DIR, "quarantine"))
+    FILE_TMP_DIR = os.environ.get("FILE_TMP_DIR", os.path.join(_VAR_DIR, "tmp"))             # scan staging
+
+    MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
+    MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+    # MIME allow-list (content is sniffed; the extension alone is never trusted).
+    UPLOAD_ALLOWED_MIME = [
+        m.strip() for m in os.environ.get(
+            "UPLOAD_ALLOWED_MIME",
+            "application/pdf,text/plain,image/png,image/jpeg,image/gif,"
+            "application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+            "application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,"
+            "text/csv,application/zip"
+        ).split(",") if m.strip()
+    ]
+
+    # Scanner engine: "demo" (EICAR + heuristics, no external deps) or "clamav"
+    # (real signature engine via the clamd daemon). DEMO is clearly separated
+    # from REAL detection and must never be presented as production AV coverage.
+    SCANNER_MODE = os.environ.get("SCANNER_MODE", "demo").lower()
+    CLAMAV_HOST = os.environ.get("CLAMAV_HOST", "127.0.0.1")
+    CLAMAV_PORT = int(os.environ.get("CLAMAV_PORT", "3310"))
+    CLAMAV_SOCKET = os.environ.get("CLAMAV_SOCKET", "")  # unix socket path (optional)
+    SCAN_TIMEOUT_SECONDS = int(os.environ.get("SCAN_TIMEOUT_SECONDS", "30"))
+
+    # Policy: a malicious upload always quarantines + alerts. Auto-blocking the
+    # user is OFF by default (opt-in) so the response stays configurable, not
+    # aggressive — see requirement 12.
+    MALWARE_AUTO_BLOCK = os.environ.get("MALWARE_AUTO_BLOCK", "false").lower() == "true"
+
     # --- Server ---
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))

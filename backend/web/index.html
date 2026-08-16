@@ -105,6 +105,9 @@
   .rk-legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0 2px;font-size:11px;color:#7f8c8d}
   .rk-legend b{font-weight:600;color:#7f8c8d;margin-right:2px}
   .rk-legend span{padding:3px 9px;border-radius:5px;font-weight:700}
+  .upbox{display:flex;gap:12px;align-items:center;background:#f8fafb;border:1.5px dashed #cbd5db;
+    border-radius:8px;padding:18px 16px;margin-bottom:6px}
+  .upbox input[type=file]{flex:1;font-size:13px}
   .btn-block{background:#e74c3c;color:#fff;padding:5px 12px;font-size:12px}
   .btn-unblock{background:#27ae60;color:#fff;padding:5px 12px;font-size:12px}
   .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
@@ -281,8 +284,9 @@ const APPS=[
   {title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
 ];
 function tabsFor(r){
-  if(r==="Admin")return[["apps","Applications"],["risk","Risk & Policy"],["access","Access Logs"],["login","Login History"],
-    ["site","Site Access Log"],["alerts","Security Alerts"],["users","Users"],["patients","Patients"]];
+  if(r==="Admin")return[["apps","Applications"],["risk","Risk & Policy"],["filesec","File Security"],["access","Access Logs"],
+    ["login","Login History"],["site","Site Access Log"],["alerts","Security Alerts"],["users","Users"],["patients","Patients"]];
+  if(r==="User")return[["apps","Applications"],["files","Files"]];
   return[["apps","Applications"]];
 }
 let activeTab="apps";
@@ -304,6 +308,8 @@ function selectTab(k){
   else if(k==="patients")renderPatients();
   else if(k==="users")renderUsers();
   else if(k==="risk"){renderRisk();monitorTimer=setInterval(renderRisk,3000);}
+  else if(k==="files")renderFiles();
+  else if(k==="filesec"){renderFileSecurity();monitorTimer=setInterval(renderFileSecurity,3000);}
   else if(k==="alerts"){renderSecurity();monitorTimer=setInterval(renderSecurity,3000);}
   else renderLogFeed(k);
 }
@@ -552,6 +558,96 @@ async function addPatient(){
 }
 async function delPatient(pid){if(!confirm("Delete "+pid+"?"))return;
   try{await api("/api/protected/patients/"+pid,{method:"DELETE"});renderPatients();}catch(e){alert(e.message);}}
+
+/* ---- Secure File Upload + Malware Detection ---- */
+function scanBadge(s){
+  const m={CLEAN:["rk-low","Clean"],SUSPICIOUS:["rk-med","Suspicious"],MALICIOUS:["rk-crit","Malicious"],
+    SCAN_ERROR:["rk-med","Scan error"],PENDING_SCAN:["rk-none","Pending"]};
+  const x=m[s]||["rk-none",s]; return `<span class="rk-badge ${x[0]}">${x[1]}</span>`;}
+function reviewBadge(s){
+  const m={APPROVED:["rk-low","Approved"],QUARANTINED:["rk-crit","Quarantined"],REJECTED:["rk-med","Rejected"],PENDING:["rk-none","Pending"]};
+  const x=m[s]||["rk-none",s]; return `<span class="rk-badge ${x[0]}">${x[1]}</span>`;}
+function fbytes(n){n=n||0;return n<1024?n+" B":(n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(1)+" MB");}
+function fmsg(t,ok){const e=document.getElementById("fu-msg");if(e){e.textContent=t;e.className="authmsg "+(ok?"ok":"err");}}
+
+async function uploadFile(){
+  const inp=document.getElementById("fu-input");
+  if(!inp||!inp.files.length)return fmsg("Please choose a file first.",false);
+  const fd=new FormData(); fd.append("file",inp.files[0]);
+  fmsg("Uploading and running the security scan…",true);
+  try{
+    const r=await fetch("/api/files/upload",{method:"POST",
+      headers:{"Authorization":"Bearer "+token,"X-Device-Id":deviceId()},body:fd});
+    const b=await r.json().catch(()=>({}));
+    if(!r.ok){ if(b.session_revoked)handleRevoked(b.error||"Session revoked."); return fmsg(b.error||"Upload failed.",false); }
+    fmsg(b.message,!b.blocked); inp.value=""; loadMyFiles();
+  }catch(e){fmsg("Upload failed: "+e.message,false);}
+}
+
+async function renderFiles(){
+  let h=`<h2>Secure File Upload</h2>`;
+  h+=`<p class="subtitle">Every upload is scanned before it becomes available. Malicious files are quarantined automatically and the administrator is alerted.</p>`;
+  h+=`<div class="panel-narrow"><div class="upbox">
+      <input type="file" id="fu-input">
+      <button class="btn-sm" style="background:#27ae60" onclick="uploadFile()">Upload &amp; Scan</button>
+    </div><div id="fu-msg" class="authmsg" style="display:none"></div>
+    <div id="fu-list"></div></div>`;
+  setContent(h); loadMyFiles();
+}
+async function loadMyFiles(){
+  try{const rows=await api("/api/files");
+    let h=`<h3 class="sech" style="margin-top:20px">My Files</h3>`;
+    h+=`<table class="rk"><tr><th>File</th><th>Size</th><th>Scan</th><th>Status</th><th>Uploaded</th><th style="width:110px">Action</th></tr>`;
+    rows.forEach(f=>{
+      const dl=f.downloadable?`<button class="btn-unblock" onclick="downloadFile(${f.id})">Download</button>`
+        :`<span class="muted">unavailable</span>`;
+      h+=`<tr><td>${f.original_filename}</td><td>${fbytes(f.file_size)}</td><td>${scanBadge(f.scan_status)}</td>
+        <td>${reviewBadge(f.review_status)}</td><td>${t19(f.upload_time)}</td><td>${dl}</td></tr>`;
+    });
+    if(!rows.length)h+="<tr><td colspan='6' style='text-align:center' class='muted'>No files uploaded yet.</td></tr>";
+    document.getElementById("fu-list").innerHTML=h+"</table>";
+  }catch(e){const el=document.getElementById("fu-list");if(el)el.innerHTML="Error: "+e.message;}
+}
+async function downloadFile(id){
+  try{
+    const r=await fetch("/api/files/"+id+"/download",{headers:{"Authorization":"Bearer "+token,"X-Device-Id":deviceId()}});
+    if(!r.ok){const b=await r.json().catch(()=>({}));if(b.session_revoked)handleRevoked(b.error||"Session revoked.");return alert(b.error||"Download failed.");}
+    const blob=await r.blob(); const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=""; document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){alert("Download failed: "+e.message);}
+}
+
+async function renderFileSecurity(){
+  try{const [m,files]=await Promise.all([api("/api/admin/file-metrics"),api("/api/admin/files")]);
+    let h=`<h2 class="rk-title">File Security Monitor</h2>`;
+    h+=`<p class="subtitle">Uploaded files are scanned, hashed (SHA-256) and quarantined if unsafe. Scanner engine: <b>${m.scanner_mode}</b>.</p>`;
+    h+=`<div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
+    const cards=[[m.total,"Total Scanned","#3498db"],[m.clean,"Clean","#27ae60"],[m.suspicious,"Suspicious","#e67e22"],
+      [m.malicious,"Malicious","#c0392b"],[m.quarantined,"Quarantined","#8e44ad"],[m.scan_errors,"Scan Errors","#7f8c8d"]];
+    h+=`<div class="rk-kpis">`+cards.map(c=>
+      `<div class="rk-card" style="--accent:${c[2]}"><div class="num">${c[0]}</div><div class="lbl">${c[1]}</div></div>`).join("")+`</div>`;
+    h+=`<div class="rk-sec">Recent Uploads &amp; Detections <span class="tag">SHA-256 · detection · review</span></div>`;
+    h+=`<table class="rk"><tr><th>Time</th><th>User</th><th>File</th><th>SHA-256</th><th>Scan</th><th>Detection</th><th>Status</th><th style="width:200px">Review</th></tr>`;
+    files.forEach(f=>{
+      let act="<span class='muted'>—</span>";
+      if(f.review_status==="QUARANTINED"||f.review_status==="PENDING"){
+        const approve=(f.scan_status==="MALICIOUS"||f.scan_status==="SCAN_ERROR")?"":
+          `<button class="btn-unblock" onclick="reviewFile(${f.id},'approve')">Approve</button> `;
+        act=`${approve}<button class="btn-block" onclick="reviewFile(${f.id},'reject')">Reject</button>`;
+      }
+      h+=`<tr><td>${t19(f.upload_time)}</td><td><b>${f.username||""}</b></td><td>${f.original_filename}</td>
+        <td class="rk-mono">${(f.file_hash||"").slice(0,12)}…</td><td>${scanBadge(f.scan_status)}</td>
+        <td class="muted">${f.detection_name||"—"}</td><td>${reviewBadge(f.review_status)}</td><td>${act}</td></tr>`;
+    });
+    if(!files.length)h+="<tr><td colspan='8' style='text-align:center' class='muted'>No uploads yet.</td></tr>";
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
+}
+async function reviewFile(id,decision){
+  try{await api("/api/admin/files/"+id+"/review",{method:"POST",body:JSON.stringify({decision})});renderFileSecurity();}
+  catch(e){alert(e.message);}
+}
 
 /* ---- modal ---- */
 function modal(title,body){

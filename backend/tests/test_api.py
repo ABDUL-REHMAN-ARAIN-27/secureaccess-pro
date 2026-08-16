@@ -321,3 +321,98 @@ def test_risk_endpoints_are_admin_only(client, totp_for):
     viewer = auth_header(token_for(client, totp_for, "viewer", "Viewer@123"))
     for path in ("/api/risk-events", "/api/sessions", "/api/risk-metrics", "/api/devices"):
         assert client.get(path, headers=viewer).status_code == 403
+
+
+# --------------------------------------------------------------------------- #
+# Secure File Upload + Malware Detection
+# --------------------------------------------------------------------------- #
+import io  # noqa: E402
+
+# The official EICAR anti-malware test string (harmless), split to avoid flags.
+EICAR = (b"X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR"
+         b"-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+
+
+def _upload(client, headers, content, filename, device="dev-1"):
+    h = dict(headers); h["X-Device-Id"] = device
+    return client.post("/api/files/upload", headers=h,
+                       data={"file": (io.BytesIO(content), filename)},
+                       content_type="multipart/form-data")
+
+
+def test_clean_file_is_scanned_and_downloadable(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, b"This is a perfectly clean report.\n", "report.txt")
+    assert r.status_code == 201
+    body = r.get_json()
+    assert body["blocked"] is False
+    assert body["file"]["scan_status"] == "CLEAN"
+    # The owner can download a clean, approved file.
+    assert client.get(f"/api/files/{body['file']['id']}/download", headers=uh).status_code == 200
+
+
+def test_eicar_is_detected_quarantined_and_alerted(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, EICAR, "invoice.txt")
+    assert r.status_code == 201
+    body = r.get_json()
+    assert body["blocked"] is True
+    assert body["file"]["scan_status"] == "MALICIOUS"
+    fid = body["file"]["id"]
+
+    # The malicious file cannot be downloaded by the user.
+    assert client.get(f"/api/files/{fid}/download", headers=uh).status_code == 403
+
+    # A security alert is raised for the admin, and the audit chain stays intact.
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="admin-d")
+    alerts = client.get("/api/alerts", headers=ah).get_json()["alerts"]
+    assert any(a["type"] == "Malicious file upload" for a in alerts)
+    assert client.get("/api/audit/verify", headers=ah).get_json()["intact"] is True
+
+
+def test_upload_rejects_oversized_file(client, totp_for, app):
+    app.config["MAX_UPLOAD_BYTES"] = 1024
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, b"A" * 2048, "big.txt")
+    assert r.status_code == 400
+    assert "limit" in r.get_json()["error"].lower()
+
+
+def test_upload_rejects_path_traversal_name(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, b"x", "../../etc/passwd")
+    assert r.status_code == 400
+
+
+def test_upload_rejects_disallowed_content(client, totp_for):
+    # A PE/EXE header is not in the MIME allow-list (extension is never trusted).
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, b"MZ\x90\x00 program bytes", "tool.bin")
+    assert r.status_code == 400
+
+
+def test_viewer_cannot_upload(client, totp_for):
+    _, vh = _login_dev(client, totp_for, "viewer", "Viewer@123")
+    r = _upload(client, vh, b"clean", "v.txt")
+    assert r.status_code == 403  # RBAC: viewers may not upload
+
+
+def test_user_cannot_download_another_users_file(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="u1")
+    fid = _upload(client, uh, b"private clean data", "mine.txt", device="u1").get_json()["file"]["id"]
+    # A viewer (different account, no upload rights) must not reach the file.
+    _, vh = _login_dev(client, totp_for, "viewer", "Viewer@123", device="v1")
+    assert client.get(f"/api/files/{fid}/download", headers=vh).status_code == 403
+
+
+def test_admin_can_review_quarantined_file(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    fid = _upload(client, uh, EICAR, "bad.txt").get_json()["file"]["id"]
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="admin-d")
+    # A malicious file cannot be approved for download.
+    approve = client.post(f"/api/admin/files/{fid}/review", headers=ah, json={"decision": "approve"})
+    assert approve.status_code == 400
+    # But it can be explicitly rejected.
+    reject = client.post(f"/api/admin/files/{fid}/review", headers=ah, json={"decision": "reject"})
+    assert reject.status_code == 200
+    assert reject.get_json()["file"]["review_status"] == "REJECTED"

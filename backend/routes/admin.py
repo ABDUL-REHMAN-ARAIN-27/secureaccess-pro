@@ -20,6 +20,9 @@ from models import (
     LoginHistory,
     SiteAccess,
     User,
+    UploadedFile,
+    SCAN_MALICIOUS,
+    SCAN_SUSPICIOUS,
     ROLE_ADMIN,
     ROLES,
 )
@@ -146,6 +149,23 @@ def get_alerts():
             "type": "Account locked",
             "subject": u.username,
             "detail": "Account locked after repeated failed logins",
+        })
+
+    # Malicious / suspicious file uploads (from the file-security module).
+    threats = (
+        UploadedFile.query.filter(
+            UploadedFile.scan_status.in_([SCAN_MALICIOUS, SCAN_SUSPICIOUS]),
+            UploadedFile.upload_time >= window,
+        ).order_by(UploadedFile.upload_time.desc()).all()
+    )
+    for t in threats:
+        malicious = t.scan_status == SCAN_MALICIOUS
+        alerts.append({
+            "severity": "HIGH" if malicious else "MEDIUM",
+            "type": "Malicious file upload" if malicious else "Suspicious file upload",
+            "subject": t.username or "unknown",
+            "detail": (f"{'Blocked' if malicious else 'Quarantined'} '{t.original_filename}' "
+                       f"({t.detection_name or 'flagged'}) — SHA-256 {(t.file_hash or '')[:12]}…"),
         })
 
     order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}

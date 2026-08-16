@@ -36,6 +36,9 @@ _TRACK_SKIP = {
     "zerotrust.list_sessions",
     "zerotrust.list_devices",
     "zerotrust.risk_metrics",
+    "files.list_my_files",
+    "files.admin_list_files",
+    "files.admin_file_metrics",
 }
 
 
@@ -65,6 +68,13 @@ def create_app(config_class=Config):
 
     with app.app_context():
         db.create_all()
+
+    # Ensure the private file-storage directories exist (outside the web root).
+    try:
+        import filevault
+        filevault.ensure_dirs(app.config)
+    except Exception as exc:  # pragma: no cover
+        print(f"File-storage init skipped: {exc}")
 
     # Auto-seed on first startup (demo accounts + patients) so a fresh
     # deployment is immediately usable. Disable with AUTO_SEED=false.
@@ -113,12 +123,14 @@ def _register_blueprints(app):
     from routes.admin import admin_bp
     from routes.patients import patients_bp
     from routes.zerotrust import zerotrust_bp
+    from routes.files import files_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(resources_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(patients_bp)
     app.register_blueprint(zerotrust_bp)
+    app.register_blueprint(files_bp)
 
 
 def _register_request_hooks(app):
