@@ -68,7 +68,7 @@ class AdminDashboard:
         self.e_pass = self._field(card, "Password", show="*")
         self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)")
 
-        tk.Button(card, text="✉  Email me a code", font=("Segoe UI", 10, "bold"),
+        tk.Button(card, text="✉  Send OTP", font=("Segoe UI", 10, "bold"),
                   bg=FIELD, fg=TEXT, relief="flat", padx=10, pady=6, cursor="hand2",
                   command=self.do_request_otp).pack(fill="x", pady=(8, 0))
         tk.Button(card, text="Authenticate", font=("Segoe UI", 12, "bold"), bg=ACCENT,
@@ -76,7 +76,7 @@ class AdminDashboard:
                   command=self.do_login).pack(fill="x", pady=(10, 6))
         self.root.bind("<Return>", lambda _e: self.do_login())
 
-        tk.Label(self.root, text="Administrator sign-in  •  use 'Email me a code' for your MFA code",
+        tk.Label(self.root, text="Administrator sign-in  •  click 'Send OTP' for your MFA code",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED).pack(side="bottom", pady=18)
 
     def do_request_otp(self):

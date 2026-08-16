@@ -66,7 +66,7 @@ class UserApp:
         self.e_pass = self._field(card, "Password", 2, show="*")
         self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)", 3)
 
-        otp_btn = tk.Button(card, text="✉  Email me a code", font=("Segoe UI", 10, "bold"),
+        otp_btn = tk.Button(card, text="✉  Send OTP", font=("Segoe UI", 10, "bold"),
                             bg=FIELD, fg=TEXT, activebackground=MINT, relief="flat",
                             padx=10, pady=6, cursor="hand2", command=self.do_request_otp)
         otp_btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
@@ -84,7 +84,7 @@ class UserApp:
         self.root.bind("<Return>", lambda _e: self.do_login())
 
         tk.Label(self.root,
-                 text="Multi-Factor Authentication  •  click 'Email me a code' to receive your login code",
+                 text="Multi-Factor Authentication  •  click 'Send OTP' to receive your login code",
                  font=("Segoe UI", 9), bg=BG, fg=MUTED, justify="center").pack(side="bottom", pady=16)
 
     def show_register(self):
