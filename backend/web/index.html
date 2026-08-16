@@ -230,12 +230,16 @@ async function api(path,opts={}){
     // Phase 2: a revoked session ends the session immediately (401 blocklist or
     // 403 from continuous verification both carry session_revoked).
     if(b.session_revoked){handleRevoked(b.error||"Session revoked.");}
-    throw{status:r.status,message:b.error||b.detail||r.statusText,body:b};
+    // Expired / invalid JWT while logged in -> send back to login clearly
+    // (so it never looks like an action "silently did nothing").
+    else if(r.status===401 && token){handleRevoked("Your session expired.");}
+    throw{status:r.status,message:b.error||b.detail||b.msg||r.statusText,body:b};
   }
   return b;
 }
 function handleRevoked(msg){
-  stopMonitor(); token=role=username=null;
+  stopMonitor(); if(clockTimer)clearInterval(clockTimer);
+  token=role=username=null;
   show("login"); amsg("li-msg",msg+" Please sign in again.",false);
 }
 function stopMonitor(){if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}}
@@ -632,7 +636,11 @@ async function uploadFile(){
     const r=await fetch("/api/files/upload",{method:"POST",
       headers:{"Authorization":"Bearer "+token,"X-Device-Id":deviceId()},body:fd});
     const b=await r.json().catch(()=>({}));
-    if(!r.ok){ if(b.session_revoked)handleRevoked(b.error||"Session revoked."); return fmsg(b.error||"Upload failed.",false); }
+    if(!r.ok){
+      if(b.session_revoked){handleRevoked(b.error||"Session revoked.");return;}
+      if(r.status===401){fmsg("Your session expired — please log out and log in again, then re-upload.",false);handleRevoked("Your session expired.");return;}
+      return fmsg(b.error||b.msg||"Upload failed.",false);
+    }
     fmsg(b.message,!b.blocked); inp.value=""; loadMyFiles();
   }catch(e){fmsg("Upload failed: "+e.message,false);}
 }
