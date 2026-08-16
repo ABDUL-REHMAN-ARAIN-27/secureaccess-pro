@@ -222,6 +222,41 @@ def unlock_user(user_id):
     return jsonify({"message": "Account unlocked", "user": user.to_dict()})
 
 
+def _find_user(identifier):
+    """Look up a user by numeric id or by username (from an alert subject)."""
+    if str(identifier).isdigit():
+        return User.query.get(int(identifier))
+    return User.query.filter_by(username=identifier).first()
+
+
+@admin_bp.route("/api/users/<identifier>/block", methods=["POST"])
+@roles_required(ROLE_ADMIN)
+def block_user(identifier):
+    """Revoke a user's access after suspicious activity (admin action)."""
+    user = _find_user(identifier)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if user.role == ROLE_ADMIN:
+        return jsonify({"error": "Admin accounts cannot be blocked."}), 400
+    user.is_blocked = True
+    db.session.commit()
+    record_access(get_jwt_identity(), "BLOCK", f"user:{user.username}", "SUCCESS")
+    return jsonify({"message": f"{user.username} has been blocked", "user": user.to_dict()})
+
+
+@admin_bp.route("/api/users/<identifier>/unblock", methods=["POST"])
+@roles_required(ROLE_ADMIN)
+def unblock_user(identifier):
+    user = _find_user(identifier)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    user.is_blocked = False
+    user.reset_failures()
+    db.session.commit()
+    record_access(get_jwt_identity(), "UNBLOCK", f"user:{user.username}", "SUCCESS")
+    return jsonify({"message": f"{user.username} has been unblocked", "user": user.to_dict()})
+
+
 # ---------------------------------------------------------------------------
 # Audit export (Admin only) - "logs exportable for audit purposes"
 # ---------------------------------------------------------------------------

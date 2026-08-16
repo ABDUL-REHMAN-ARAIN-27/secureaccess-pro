@@ -17,7 +17,7 @@ from flask_jwt_extended import create_access_token
 
 from extensions import db
 from mailer import send_otp_email
-from models import User, LoginHistory, ROLE_VIEWER
+from models import User, LoginHistory, ROLE_USER, ROLE_VIEWER
 from ratelimit import rate_limited
 from security import client_ip, record_access, resolve_ip
 
@@ -115,6 +115,12 @@ def login():
         record_access(username, "LOGIN", "SYSTEM", "FAILED")
         return jsonify({"error": "Invalid credentials"}), 401
 
+    # Blocked by an administrator.
+    if user.is_blocked:
+        _log_login(username, "FAILED", "Access blocked by administrator")
+        record_access(username, "LOGIN", "SYSTEM", "BLOCKED")
+        return jsonify({"error": "Your access has been blocked by the administrator."}), 403
+
     # Locked account (brute-force protection).
     if user.is_locked():
         remaining = int((user.locked_until - datetime.utcnow()).total_seconds() // 60) + 1
@@ -205,7 +211,12 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email already registered"}), 409
 
-    user = User(username=username, email=email, role=ROLE_VIEWER,
+    # Self-registration may choose User or Viewer (never Admin).
+    chosen_role = (data.get("role") or ROLE_VIEWER).strip().capitalize()
+    if chosen_role not in (ROLE_USER, ROLE_VIEWER):
+        chosen_role = ROLE_VIEWER
+
+    user = User(username=username, email=email, role=chosen_role,
                 totp_secret=User.new_totp_secret())
     user.set_password(password)
 
@@ -224,7 +235,7 @@ def register():
                 "message": "Registration successful. Enrol the secret below in your "
                 "authenticator app, then log in.",
                 "username": username,
-                "role": ROLE_VIEWER,
+                "role": chosen_role,
                 "totp_secret": user.totp_secret,
                 "provisioning_uri": user.provisioning_uri(
                     issuer=current_app.config["TOTP_ISSUER"],

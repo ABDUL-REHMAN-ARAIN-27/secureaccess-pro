@@ -36,6 +36,9 @@ class User(db.Model):
     failed_attempts = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
 
+    # Admin can revoke a user's access (block) after suspicious activity.
+    is_blocked = db.Column(db.Boolean, default=False, nullable=False)
+
     # Email OTP (second factor delivered to the registered email).
     email_otp_hash = db.Column(db.String(255), nullable=True)
     email_otp_expires = db.Column(db.DateTime, nullable=True)
@@ -134,5 +137,6 @@ class User(db.Model):
             "role": self.role,
             "failed_attempts": self.failed_attempts,
             "locked": self.is_locked(),
+            "blocked": bool(self.is_blocked),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
