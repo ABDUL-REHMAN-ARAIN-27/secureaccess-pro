@@ -51,15 +51,8 @@ def device_fingerprint(username, device_id):
 
 
 def _short_ua():
-    ua = request.headers.get("User-Agent", "Unknown")
-    for name in ("Edg", "Chrome", "Firefox", "Safari"):
-        if name in ua:
-            browser = "Edge" if name == "Edg" else name
-            break
-    else:
-        browser = "Unknown browser"
-    os_name = next((o for o in ("Windows", "Mac", "Linux", "Android", "iPhone") if o in ua), "")
-    return f"{browser}{(' on ' + os_name) if os_name else ''}"
+    import useragent
+    return useragent.device_label(request.headers.get("User-Agent", ""))
 
 
 def lookup_device(username, device_fp):

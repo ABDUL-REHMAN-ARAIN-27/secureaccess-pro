@@ -74,6 +74,7 @@ class SiteAccess(db.Model):
     status = db.Column(db.String(20))
 
     def to_dict(self):
+        import useragent
         return {
             "id": self.id,
             "ip_address": self.ip_address,
@@ -81,5 +82,7 @@ class SiteAccess(db.Model):
             "page_accessed": self.page_accessed,
             "access_time": self.access_time.isoformat() if self.access_time else None,
             "user_agent": self.user_agent,
+            "operating_system": useragent.detect_os(self.user_agent),
+            "browser": useragent.detect_browser(self.user_agent),
             "status": self.status,
         }
