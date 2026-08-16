@@ -244,11 +244,24 @@ def _login_dev(client, totp_for, username, password, device="dev-1"):
 
 
 def test_login_returns_risk_assessment(client, totp_for):
-    resp, _ = _login_dev(client, totp_for, "admin", "Admin@123")
+    # A non-admin user is scored; a brand-new device is not yet trusted.
+    resp, _ = _login_dev(client, totp_for, "user", "User@123")
     risk = resp.get_json()["risk"]
     assert risk["level"] in ("LOW", "MEDIUM", "HIGH")
     assert isinstance(risk["score"], int)
-    assert risk["known_device"] is False  # brand-new device on first login
+    assert risk["known_device"] is False
+
+
+def test_admin_is_exempt_from_risk_scoring(client, totp_for):
+    # The administrator is the trusted authority — never risk-flagged.
+    resp, ah = _login_dev(client, totp_for, "admin", "Admin@123")
+    risk = resp.get_json()["risk"]
+    assert risk["level"] == "LOW"
+    assert risk["score"] == 0
+    assert risk["known_device"] is True
+    # And sensitive access is always allowed for the admin.
+    assert client.get("/api/protected/finance", headers=ah).status_code == 200
+    assert client.get("/api/protected/patients", headers=ah).status_code == 200
 
 
 def test_continuous_verify_revokes_session_when_user_blocked(client, totp_for):

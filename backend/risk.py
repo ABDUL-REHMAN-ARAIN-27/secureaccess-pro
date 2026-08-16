@@ -18,7 +18,7 @@ from datetime import datetime
 from flask import current_app, request
 
 from extensions import db
-from models import TrustedDevice, SessionToken, RiskEvent, LoginHistory
+from models import TrustedDevice, SessionToken, RiskEvent, LoginHistory, ROLE_ADMIN
 
 LOW, MEDIUM, HIGH = "LOW", "MEDIUM", "HIGH"
 
@@ -104,6 +104,13 @@ def score_login(user, ip, device_fp):
     """Score an authentication attempt (called after password+MFA succeed).
     Returns (score, level, factors, known_device)."""
     cfg = current_app.config
+
+    # The administrator is the trusted authority that operates the system — it
+    # is never subjected to risk scoring / step-up / revocation. Risk-based
+    # access control applies to User and Viewer accounts only.
+    if user.role == ROLE_ADMIN:
+        return 0, LOW, ["administrator account (trusted)"], True
+
     score = 0
     factors = []
 
@@ -139,6 +146,11 @@ def score_access(user, resource, session):
     """Continuous verification: re-score a sensitive access against the live
     session. Returns (score, level, factors)."""
     cfg = current_app.config
+
+    # Administrator is trusted — its own access is never risk-blocked.
+    if user.role == ROLE_ADMIN:
+        return 0, LOW, ["administrator account (trusted)"]
+
     score = 0
     factors = []
 

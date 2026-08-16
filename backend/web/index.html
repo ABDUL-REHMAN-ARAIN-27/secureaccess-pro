@@ -223,7 +223,7 @@ async function api(path,opts={}){
 }
 function handleRevoked(msg){
   stopMonitor(); token=role=username=null;
-  show("login"); amsg("li-msg","🔒 "+msg+" Please sign in again.",false);
+  show("login"); amsg("li-msg",msg+" Please sign in again.",false);
 }
 function stopMonitor(){if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}}
 function t19(x){return(x||"").replace("T"," ").slice(0,19);}
@@ -310,8 +310,8 @@ function renderApps(){
   let h='<h2>Protected Applications</h2>';
   if(lastRisk){
     const lv=lastRisk.level, c=lv==="HIGH"?"pill-bad":(lv==="MEDIUM"?"pill-warn":"pill-ok");
-    const dev=lastRisk.known_device?"🖥 Trusted device":"🆕 New device";
-    h+=`<div style="text-align:center;margin:-6px 0 16px"><span class="pill ${c}">${dev} · Login risk: ${lv} (${lastRisk.score})</span></div>`;
+    const dev=lastRisk.known_device?"Trusted device":"New device";
+    h+=`<div style="text-align:center;margin:-6px 0 16px"><span class="pill ${c}">${dev} &middot; Login risk: ${lv} (${lastRisk.score})</span></div>`;
   }
   h+='<div class="cards">';
   APPS.filter(a=>a.roles.includes(role)).forEach((a,i)=>{
@@ -330,11 +330,11 @@ async function openApp(i){
   }catch(e){
     const b=e.body||{};
     if(b.session_revoked){
-      modal("🔒 Session Revoked — Continuous Verification",
+      modal("Session Revoked — Continuous Verification",
         `This access was scored <b>${b.risk_level} risk</b> (score ${b.risk_score}).\n`+
         `Reasons: ${(b.factors||[]).join("; ")}\n\nYour session has been revoked. Please sign in again.`);
     }else if(b.step_up_required){
-      modal("🔐 Step-Up Verification Required",
+      modal("Step-Up Verification Required",
         `This access was scored <b>${b.risk_level} risk</b> (score ${b.risk_score}).\n`+
         `Reasons: ${(b.factors||[]).join("; ")}\n\nPlease re-verify with a fresh OTP before continuing.`);
     }else{
@@ -411,55 +411,54 @@ async function renderSecurity(){
 
 /* ---- Risk & Policy (admin) — Phase 2 Zero Trust ---- */
 function riskColor(l){return l==="HIGH"?"#e74c3c":(l==="MEDIUM"?"#e67e22":"#27ae60");}
-function riskBadge(l){const c=l==="HIGH"?"rk-hi":(l==="MEDIUM"?"rk-med":"rk-lo");
-  const ic=l==="HIGH"?"⬤":(l==="MEDIUM"?"⬤":"⬤");return `<span class="rk-badge ${c}">${ic} ${l}</span>`;}
+function riskBadge(l){const c=l==="HIGH"?"rk-hi":(l==="MEDIUM"?"rk-med":"rk-lo");return `<span class="rk-badge ${c}">${l}</span>`;}
 function riskMeter(level,score){const w=Math.max(6,Math.min(100,score));
   return `<span class="rk-meter"><span class="rk-bar"><i style="width:${w}%;background:${riskColor(level)}"></i></span><span class="rk-score">${score}</span></span>`;}
 function decisionBadge(d){
-  if(d==="REVOKE")return `<span class="rk-badge rk-hi">⛔ REVOKE</span>`;
-  if(d==="STEP_UP")return `<span class="rk-badge rk-med">🔐 STEP-UP</span>`;
-  return `<span class="rk-badge rk-lo">✓ ALLOW</span>`;}
+  if(d==="REVOKE")return `<span class="rk-badge rk-hi">REVOKE</span>`;
+  if(d==="STEP_UP")return `<span class="rk-badge rk-med">STEP-UP</span>`;
+  return `<span class="rk-badge rk-lo">ALLOW</span>`;}
 function pipeStrip(){
   const steps=[["Identity",0],["MFA",0],["Device",1],["Context",0],["Risk Score",1],
     ["Policy Engine",1],["Decision",0],["Continuous Verify",1],["Auto Response",1]];
   return `<div class="rk-pipe">`+steps.map((s,i)=>
     `<span class="rk-step${s[1]?" key":""}">${s[0]}</span>`+
-    (i<steps.length-1?`<span class="rk-arrow">→</span>`:"")).join("")+`</div>`;
+    (i<steps.length-1?`<span class="rk-arrow">&rarr;</span>`:"")).join("")+`</div>`;
 }
 async function renderRisk(){
   try{const [m,sessions,events,devices]=await Promise.all(
     [api("/api/risk-metrics"),api("/api/sessions"),api("/api/risk-events"),api("/api/devices")]);
     let h=`<h2 class="rk-title">Risk &amp; Policy Engine</h2>`;
+    h+=`<p class="subtitle">Risk-based access control applies to User and Viewer accounts. Administrator access is trusted.</p>`;
     h+=pipeStrip();
-    h+=`<div style="text-align:center"><span class="livepill">● auto-refreshing every 3s</span></div>`;
+    h+=`<div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
 
-    // Premium KPI cards
+    // KPI cards
     const cards=[
-      ["🟢",m.active_sessions,"Active Sessions","#3498db"],
-      ["⚠️",m.high_risk_sessions,"High-Risk","#e74c3c"],
-      ["🖥️",m.trusted_devices,"Trusted Devices","#27ae60"],
-      ["🔐",m.step_ups_1h,"Step-ups (1h)","#e67e22"],
-      ["🚨",m.high_events_1h,"High Events (1h)","#c0392b"],
-      ["⛔",m.revocations,"Revocations","#8e44ad"],
+      [m.active_sessions,"Active Sessions","#3498db"],
+      [m.high_risk_sessions,"High-Risk","#e74c3c"],
+      [m.trusted_devices,"Trusted Devices","#27ae60"],
+      [m.step_ups_1h,"Step-ups (1h)","#e67e22"],
+      [m.high_events_1h,"High Events (1h)","#c0392b"],
+      [m.revocations,"Revocations","#8e44ad"],
     ];
     h+=`<div class="rk-kpis">`+cards.map(c=>
-      `<div class="rk-card" style="--accent:${c[3]}"><div class="ic">${c[0]}</div>
-        <div class="num">${c[1]}</div><div class="lbl">${c[2]}</div></div>`).join("")+`</div>`;
+      `<div class="rk-card" style="--accent:${c[2]}"><div class="num">${c[0]}</div><div class="lbl">${c[1]}</div></div>`).join("")+`</div>`;
 
     // Active sessions
-    h+=`<div class="rk-sec">🟢 Active Sessions <span class="tag">revoke to force re-authentication</span></div>`;
+    h+=`<div class="rk-sec">Active Sessions <span class="tag">revoke to force re-authentication</span></div>`;
     h+=`<table class="rk"><tr><th>User</th><th>Role</th><th>Risk Score</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
     const act=sessions.filter(s=>s.active);
     act.forEach(s=>{
       h+=`<tr><td><b>${s.username}</b></td><td>${s.role||""}</td><td>${riskBadge(s.risk_level)} ${riskMeter(s.risk_level,s.risk_score)}</td>
         <td class="rk-mono">${s.device_fp}…</td><td>${s.ip_address||""}</td><td>${t19(s.created_at)}</td>
-        <td><button class="btn-block" onclick="revokeSession(${s.id})">⛔ Revoke</button></td></tr>`;
+        <td><button class="btn-block" onclick="revokeSession(${s.id})">Revoke</button></td></tr>`;
     });
     if(!act.length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No active sessions.</td></tr>";
     h+="</table>";
 
     // Risk decision feed
-    h+=`<div class="rk-sec">📈 Risk Decision Feed <span class="tag">every scored login &amp; access</span></div>`;
+    h+=`<div class="rk-sec">Risk Decision Feed <span class="tag">every scored login &amp; access</span></div>`;
     h+=`<table class="rk"><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>Risk Score</th><th>Decision</th><th>Signals</th></tr>`;
     events.slice(0,40).forEach(e=>{
       h+=`<tr><td>${t19(e.timestamp)}</td><td><b>${e.username||""}</b></td><td>${e.phase||""}</td><td>${e.resource||""}</td>
@@ -470,10 +469,10 @@ async function renderRisk(){
     h+="</table>";
 
     // Device trust
-    h+=`<div class="rk-sec">🖥️ Device Trust <span class="tag">untrust to require step-up next time</span></div>`;
+    h+=`<div class="rk-sec">Device Trust <span class="tag">untrust to require step-up next time</span></div>`;
     h+=`<table class="rk"><tr><th>User</th><th>Device</th><th>Fingerprint</th><th>Status</th><th>Last Seen</th><th style="width:150px">Action</th></tr>`;
     devices.forEach(d=>{
-      const st=d.trusted?`<span class="rk-badge rk-lo">✓ Trusted</span>`:`<span class="rk-badge rk-med">⚠ Untrusted</span>`;
+      const st=d.trusted?`<span class="rk-badge rk-lo">Trusted</span>`:`<span class="rk-badge rk-med">Untrusted</span>`;
       const a=d.trusted?`<button class="btn-block" onclick="untrustDevice(${d.id})">Untrust</button>`
         :`<button class="btn-unblock" onclick="trustDevice(${d.id})">Trust</button>`;
       h+=`<tr><td><b>${d.username}</b></td><td>${d.label||""}</td><td class="rk-mono">${d.device_fp}…</td><td>${st}</td><td>${t19(d.last_seen)}</td><td>${a}</td></tr>`;
