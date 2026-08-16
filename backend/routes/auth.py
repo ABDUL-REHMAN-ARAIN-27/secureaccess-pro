@@ -202,6 +202,7 @@ def login():
                 ),
                 "risk": {
                     "score": score,
+                    "cvss": risk_engine.cvss_of(score),
                     "level": level,
                     "factors": factors,
                     "known_device": known_device,

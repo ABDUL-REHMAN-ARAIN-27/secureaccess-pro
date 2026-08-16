@@ -82,7 +82,7 @@ class Config:
     RISK_WEIGHT_OFFHOURS = int(os.environ.get("RISK_WEIGHT_OFFHOURS", "10"))   # outside 06:00-22:00
     RISK_WEIGHT_BLOCKED = int(os.environ.get("RISK_WEIGHT_BLOCKED", "100"))    # admin-blocked account
     RISK_WEIGHT_LOCKED = int(os.environ.get("RISK_WEIGHT_LOCKED", "60"))       # locked-out account
-    RISK_WEIGHT_DEVICE_MISMATCH = int(os.environ.get("RISK_WEIGHT_DEVICE_MISMATCH", "45"))  # session hijack signal
+    RISK_WEIGHT_DEVICE_MISMATCH = int(os.environ.get("RISK_WEIGHT_DEVICE_MISMATCH", "55"))  # session hijack signal
     RISK_WEIGHT_IP_MISMATCH = int(os.environ.get("RISK_WEIGHT_IP_MISMATCH", "20"))          # IP changed mid-session
 
     # Resource sensitivity added to the score during continuous verification.
@@ -95,11 +95,15 @@ class Config:
         "HR Portal": 12,
         "Document Manager": 5,
     }
-    RISK_WEIGHT_UNTRUSTED_AT_ACCESS = int(os.environ.get("RISK_WEIGHT_UNTRUSTED_AT_ACCESS", "20"))
+    RISK_WEIGHT_UNTRUSTED_AT_ACCESS = int(os.environ.get("RISK_WEIGHT_UNTRUSTED_AT_ACCESS", "30"))
 
-    # Band thresholds (inclusive lower bounds).
-    RISK_MEDIUM = int(os.environ.get("RISK_MEDIUM", "30"))
-    RISK_HIGH = int(os.environ.get("RISK_HIGH", "60"))
+    # Severity bands follow the CVSS v3 rating scale. The internal 0-100 score is
+    # expressed as a CVSS 0.0-10.0 value (score / 10):
+    #   None 0.0 | Low 0.1-3.9 | Medium 4.0-6.9 | High 7.0-8.9 | Critical 9.0-10.0
+    # Thresholds below are the 0-100 lower bounds for MEDIUM / HIGH / CRITICAL.
+    RISK_MEDIUM = int(os.environ.get("RISK_MEDIUM", "40"))     # CVSS 4.0
+    RISK_HIGH = int(os.environ.get("RISK_HIGH", "70"))        # CVSS 7.0
+    RISK_CRITICAL = int(os.environ.get("RISK_CRITICAL", "90"))  # CVSS 9.0
 
     # --- Server ---
     HOST = os.environ.get("HOST", "0.0.0.0")

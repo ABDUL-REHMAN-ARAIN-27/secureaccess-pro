@@ -66,7 +66,7 @@ class UserApp:
         self.e_pass = self._field(card, "Password", 2, show="*")
         self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)", 3)
 
-        otp_btn = tk.Button(card, text="✉  Send OTP", font=("Segoe UI", 10, "bold"),
+        otp_btn = tk.Button(card, text="Send OTP", font=("Segoe UI", 10, "bold"),
                             bg=FIELD, fg=TEXT, activebackground=MINT, relief="flat",
                             padx=10, pady=6, cursor="hand2", command=self.do_request_otp)
         otp_btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
@@ -106,7 +106,7 @@ class UserApp:
                   padx=10, pady=9, cursor="hand2", command=self.do_register
                   ).grid(row=5, column=0, columnspan=2, sticky="ew", pady=(20, 8))
 
-        back = tk.Label(card, text="← Back to sign in", font=("Segoe UI", 10, "underline"),
+        back = tk.Label(card, text="Back to sign in", font=("Segoe UI", 10, "underline"),
                         bg=CARD, fg=MINT, cursor="hand2")
         back.grid(row=6, column=0, columnspan=2)
         back.bind("<Button-1>", lambda _e: self.show_login())
@@ -178,7 +178,7 @@ class UserApp:
         self.root.unbind("<Return>")
         top = tk.Frame(self.root, bg=TEAL, padx=24, pady=16)
         top.pack(fill="x")
-        tk.Label(top, text="✅  Authentication Successful",
+        tk.Label(top, text="Authentication Successful",
                  font=("Segoe UI", 18, "bold"), bg=TEAL, fg="white").pack(side="left")
         tk.Button(top, text="Sign out", font=("Segoe UI", 10, "bold"), bg=CARD, fg=TEXT,
                   relief="flat", padx=12, pady=6, cursor="hand2",
@@ -247,7 +247,7 @@ class UserApp:
     def _show_result(self, title, ok, body):
         self.result.configure(state="normal")
         self.result.delete("1.0", "end")
-        badge = "✅ ACCESS GRANTED" if ok else "⛔ ACCESS DENIED"
+        badge = "ACCESS GRANTED" if ok else "ACCESS DENIED"
         self.result.insert("1.0", f"{badge}  —  {title}\n\n{body}\n")
         self.result.configure(state="disabled")
 

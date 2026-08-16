@@ -68,7 +68,7 @@ class AdminDashboard:
         self.e_pass = self._field(card, "Password", show="*")
         self.e_totp = self._field(card, "6-digit code (email OTP or authenticator)")
 
-        tk.Button(card, text="✉  Send OTP", font=("Segoe UI", 10, "bold"),
+        tk.Button(card, text="Send OTP", font=("Segoe UI", 10, "bold"),
                   bg=FIELD, fg=TEXT, relief="flat", padx=10, pady=6, cursor="hand2",
                   command=self.do_request_otp).pack(fill="x", pady=(8, 0))
         tk.Button(card, text="Authenticate", font=("Segoe UI", 12, "bold"), bg=ACCENT,
@@ -193,7 +193,7 @@ class AdminDashboard:
 
     def _build_security_tab(self, notebook):
         frame = tk.Frame(notebook, bg=BG, padx=10, pady=10)
-        notebook.add(frame, text="🚨 Security Alerts")
+        notebook.add(frame, text="Security Alerts")
 
         # Audit-integrity badge.
         self.audit_badge = tk.Label(frame, text="Audit integrity: checking…",
@@ -232,7 +232,7 @@ class AdminDashboard:
                     values=(a["severity"], a["type"], a["subject"], a["detail"]),
                     tags=(a["severity"],))
             self.no_alerts.configure(
-                text="✓ No active threats detected." if not alerts else "")
+                text="No active threats detected." if not alerts else "")
             if "active_alerts" in self.kpi_labels:
                 self.kpi_labels["active_alerts"].configure(text=str(len(alerts)))
         except ApiError:
@@ -242,11 +242,11 @@ class AdminDashboard:
             v = self.api.verify_audit()
             if v.get("intact"):
                 self.audit_badge.configure(
-                    text=f"🔒 Audit integrity: VERIFIED — {v.get('total', 0)} entries, no tampering",
+                    text=f"Audit integrity: VERIFIED — {v.get('total', 0)} entries, no tampering",
                     fg=OK)
             else:
                 self.audit_badge.configure(
-                    text=f"⚠ Audit integrity: TAMPERING DETECTED at entry #{v.get('broken_at')} — {v.get('reason','')}",
+                    text=f"Audit integrity: TAMPERING DETECTED at entry #{v.get('broken_at')} — {v.get('reason','')}",
                     fg=DANGER)
         except ApiError:
             pass
@@ -287,10 +287,10 @@ class AdminDashboard:
         self.patients_count = tk.Label(bar, text="Patient Records", font=("Segoe UI", 11, "bold"),
                                        bg=BG, fg=TEXT)
         self.patients_count.pack(side="left")
-        tk.Button(bar, text="🗑 Delete", font=("Segoe UI", 10, "bold"), bg=DANGER, fg="white",
+        tk.Button(bar, text="Delete", font=("Segoe UI", 10, "bold"), bg=DANGER, fg="white",
                   relief="flat", padx=10, pady=5, cursor="hand2",
                   command=self.delete_patient).pack(side="right", padx=4)
-        tk.Button(bar, text="✎ Edit", font=("Segoe UI", 10, "bold"), bg=WARN, fg="white",
+        tk.Button(bar, text="Edit", font=("Segoe UI", 10, "bold"), bg=WARN, fg="white",
                   relief="flat", padx=10, pady=5, cursor="hand2",
                   command=self.edit_patient).pack(side="right", padx=4)
         tk.Button(bar, text="+ Add Patient", font=("Segoe UI", 10, "bold"), bg=OK, fg="white",
@@ -536,9 +536,9 @@ class AdminDashboard:
             ])
             self.refresh_users()
             self.refresh_security()
-            self.status_lbl.configure(text="● live", fg=OK)
+            self.status_lbl.configure(text="live", fg=OK)
         except ApiError as exc:
-            self.status_lbl.configure(text=f"● {exc.message[:40]}", fg=DANGER)
+            self.status_lbl.configure(text=f"{exc.message[:40]}", fg=DANGER)
 
         self._refresh_job = self.root.after(REFRESH_MS, self.refresh)
 

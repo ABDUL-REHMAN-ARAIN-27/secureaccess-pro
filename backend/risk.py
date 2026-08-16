@@ -20,7 +20,13 @@ from flask import current_app, request
 from extensions import db
 from models import TrustedDevice, SessionToken, RiskEvent, LoginHistory, ROLE_ADMIN
 
-LOW, MEDIUM, HIGH = "LOW", "MEDIUM", "HIGH"
+# CVSS v3 severity ratings.
+NONE, LOW, MEDIUM, HIGH, CRITICAL = "None", "Low", "Medium", "High", "Critical"
+
+
+def cvss_of(score):
+    """Express the internal 0-100 risk score on the CVSS 0.0-10.0 scale."""
+    return round(min(max(score, 0), 100) / 10.0, 1)
 
 
 # --------------------------------------------------------------------------- #
@@ -83,7 +89,12 @@ def register_device(username, device_fp, ip, trust=True):
 # Scoring
 # --------------------------------------------------------------------------- #
 def _band(score):
+    """Map a 0-100 score to a CVSS v3 severity rating."""
     cfg = current_app.config
+    if score <= 0:
+        return NONE
+    if score >= cfg["RISK_CRITICAL"]:
+        return CRITICAL
     if score >= cfg["RISK_HIGH"]:
         return HIGH
     if score >= cfg["RISK_MEDIUM"]:
@@ -109,7 +120,7 @@ def score_login(user, ip, device_fp):
     # is never subjected to risk scoring / step-up / revocation. Risk-based
     # access control applies to User and Viewer accounts only.
     if user.role == ROLE_ADMIN:
-        return 0, LOW, ["administrator account (trusted)"], True
+        return 0, NONE, ["administrator account (trusted)"], True
 
     score = 0
     factors = []
@@ -149,7 +160,7 @@ def score_access(user, resource, session):
 
     # Administrator is trusted — its own access is never risk-blocked.
     if user.role == ROLE_ADMIN:
-        return 0, LOW, ["administrator account (trusted)"]
+        return 0, NONE, ["administrator account (trusted)"]
 
     score = 0
     factors = []
@@ -203,11 +214,11 @@ def decide(phase, level):
     """
     if phase == "LOGIN":
         return "ALLOW"
-    if level == HIGH:
+    if level in (HIGH, CRITICAL):
         return "REVOKE"
     if level == MEDIUM:
         return "STEP_UP"
-    return "ALLOW"
+    return "ALLOW"  # None / Low
 
 
 # --------------------------------------------------------------------------- #

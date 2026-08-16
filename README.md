@@ -1,6 +1,5 @@
 ---
 title: SecureAccess Pro
-emoji: 🔐
 colorFrom: blue
 colorTo: green
 sdk: docker
@@ -54,7 +53,7 @@ Identity → MFA → Device → Context → Risk Score → Policy Engine
 
 | Upgrade | Implementation |
 |---|---|
-| **Risk-Based Access Control** | A 0–100 risk score from live signals — failed attempts, new/unknown IP, unknown device, off-hours, account state, resource sensitivity — mapped to LOW / MEDIUM / HIGH bands (`risk.py`). |
+| **Risk-Based Access Control** | A risk score from live signals — failed attempts, new/unknown IP, unknown device, off-hours, account state, resource sensitivity — expressed on the **CVSS v3 severity scale** (None 0.0 / Low 0.1–3.9 / Medium 4.0–6.9 / High 7.0–8.9 / Critical 9.0–10.0) in `risk.py`. |
 | **Device Trust** | Each browser carries a random, non-PII device id; a per-user fingerprint is trusted after full MFA. Unknown/untrusted devices raise risk; an admin can un-trust a device to force step-up (`models/zerotrust.py`, `TrustedDevice`). |
 | **Continuous Verification** | Sensitive resources are re-scored on **every** request via a `continuous_verify` guard. MEDIUM → step-up (re-MFA), HIGH → session revoked automatically + alert. |
 | **Real session revocation** | Each JWT is tracked in a `SessionToken` store and checked by a JWT blocklist loader, so a stateless token can be **killed mid-flight** — closing the classic "valid token after an account is blocked" gap. |
@@ -66,12 +65,12 @@ Identity → MFA → Device → Context → Risk Score → Policy Engine
 
 | Feature | Admin | User | Viewer |
 |---|:---:|:---:|:---:|
-| Login + MFA (JWT + TOTP) | ✅ | ✅ | ✅ |
-| HR Portal | ✅ | ✅ | ❌ |
-| Finance Dashboard | ✅ | ❌ | ❌ |
-| Document Manager (read) | ✅ | ✅ | ✅ |
-| Admin Dashboard / Logs | ✅ | ❌ | ❌ |
-| Manage Users / Roles | ✅ | ❌ | ❌ |
+| Login + MFA (JWT + TOTP) | Yes | Yes | Yes |
+| HR Portal | Yes | Yes | No |
+| Finance Dashboard | Yes | No | No |
+| Document Manager (read) | Yes | Yes | Yes |
+| Admin Dashboard / Logs | Yes | No | No |
+| Manage Users / Roles | Yes | No | No |
 
 ---
 

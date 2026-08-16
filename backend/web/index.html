@@ -98,9 +98,13 @@
   .rk-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
   .rk-score{font-size:12px;color:#7f8c8d;font-weight:700;min-width:22px}
   .rk-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:700}
-  .rk-hi{background:#fdecea;color:#c0392b} .rk-med{background:#fef5e7;color:#c87f0a} .rk-lo{background:#eafaf1;color:#1e8449}
+  .rk-none{background:#eceff1;color:#607d8b} .rk-low{background:#e9f8ef;color:#1e8449}
+  .rk-med{background:#fef5e7;color:#c87f0a} .rk-high{background:#fdece3;color:#cf5411} .rk-crit{background:#fdeaea;color:#b01919}
   table.rk{box-shadow:0 1px 4px rgba(20,40,60,.06);border-radius:9px;overflow:hidden}
   .rk-mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#8a97a0}
+  .rk-legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0 2px;font-size:11px;color:#7f8c8d}
+  .rk-legend b{font-weight:600;color:#7f8c8d;margin-right:2px}
+  .rk-legend span{padding:3px 9px;border-radius:5px;font-weight:700}
   .btn-block{background:#e74c3c;color:#fff;padding:5px 12px;font-size:12px}
   .btn-unblock{background:#27ae60;color:#fff;padding:5px 12px;font-size:12px}
   .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
@@ -120,13 +124,13 @@
 
 <!-- ================= LOGIN ================= -->
 <div id="view-login" class="authwrap">
-  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="brand">SecureAccess Pro</div>
   <div class="tagline">Zero Trust Network Access Control System</div>
   <div class="authcard">
     <div class="frow"><label>Username:</label><input id="li-user" autocomplete="username"></div>
     <div class="frow"><label>Password:</label><input id="li-pass" type="password" autocomplete="current-password"></div>
     <div class="frow"><label>2FA Code:</label><input id="li-otp" inputmode="numeric" placeholder="6-digit code"></div>
-    <div class="otp-link"><button class="btn-link" onclick="requestOtp()">✉ Send OTP</button></div>
+    <div class="otp-link"><button class="btn-link" onclick="requestOtp()">Send OTP</button></div>
     <div class="authbtns">
       <button class="btn-green" onclick="login()">LOGIN</button>
       <button class="btn-blue" onclick="showRegister()">CREATE ACCOUNT</button>
@@ -138,11 +142,11 @@
 
 <!-- ================= FORGOT PASSWORD ================= -->
 <div id="view-forgot" class="authwrap hidden">
-  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="brand">SecureAccess Pro</div>
   <div class="tagline">Reset your password</div>
   <div class="authcard">
     <div class="frow"><label>Username or Email:</label><input id="fp-user"></div>
-    <div class="otp-link"><button class="btn-link" onclick="sendReset()">✉ Send reset code</button></div>
+    <div class="otp-link"><button class="btn-link" onclick="sendReset()">Send reset code</button></div>
     <div class="frow"><label>Reset Code:</label><input id="fp-code" inputmode="numeric" placeholder="6-digit code"></div>
     <div class="frow"><label>New Password:</label><input id="fp-pass" type="password"></div>
     <div class="frow"><label>Confirm:</label><input id="fp-conf" type="password"></div>
@@ -156,7 +160,7 @@
 
 <!-- ================= REGISTER ================= -->
 <div id="view-register" class="authwrap hidden">
-  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="brand">SecureAccess Pro</div>
   <div class="tagline">Create a new account</div>
   <div class="authcard">
     <div class="frow"><label>Username:</label><input id="rg-user"></div>
@@ -180,7 +184,7 @@
 <!-- ================= DASHBOARD ================= -->
 <div id="view-app" class="hidden">
   <div class="header">
-    <div class="h-title">🔒 SecureAccess Pro - Dashboard</div>
+    <div class="h-title">SecureAccess Pro - Dashboard</div>
     <div class="h-user" id="h-user"></div>
   </div>
   <div class="tabs" id="tabs"></div>
@@ -271,10 +275,10 @@ async function doReset(){
 
 /* ---------- dashboard ---------- */
 const APPS=[
-  {ico:"👥",title:"HR Portal",desc:"Employee records\nLeave management",roles:["Admin","User"],path:"/api/protected/hr"},
-  {ico:"💰",title:"Finance",desc:"Financial reports\nBudget data",roles:["Admin"],path:"/api/protected/finance"},
-  {ico:"🏥",title:"Patient Records",desc:"Confidential health data",roles:["Admin","User"],path:"/api/protected/patients"},
-  {ico:"📁",title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
+  {title:"HR Portal",desc:"Employee records\nLeave management",roles:["Admin","User"],path:"/api/protected/hr"},
+  {title:"Finance",desc:"Financial reports\nBudget data",roles:["Admin"],path:"/api/protected/finance"},
+  {title:"Patient Records",desc:"Confidential health data",roles:["Admin","User"],path:"/api/protected/patients"},
+  {title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
 ];
 function tabsFor(r){
   if(r==="Admin")return[["apps","Applications"],["risk","Risk & Policy"],["access","Access Logs"],["login","Login History"],
@@ -309,13 +313,14 @@ function setContent(html){document.getElementById("content").innerHTML=html;}
 function renderApps(){
   let h='<h2>Protected Applications</h2>';
   if(lastRisk){
-    const lv=lastRisk.level, c=lv==="HIGH"?"pill-bad":(lv==="MEDIUM"?"pill-warn":"pill-ok");
+    const lv=lastRisk.level, c=(lv==="High"||lv==="Critical")?"pill-bad":(lv==="Medium"?"pill-warn":"pill-ok");
     const dev=lastRisk.known_device?"Trusted device":"New device";
-    h+=`<div style="text-align:center;margin:-6px 0 16px"><span class="pill ${c}">${dev} &middot; Login risk: ${lv} (${lastRisk.score})</span></div>`;
+    const cv=(lastRisk.cvss!=null?lastRisk.cvss:0).toFixed(1);
+    h+=`<div style="text-align:center;margin:-6px 0 16px"><span class="pill ${c}">${dev} &middot; Login risk: ${lv} (CVSS ${cv})</span></div>`;
   }
   h+='<div class="cards">';
   APPS.filter(a=>a.roles.includes(role)).forEach((a,i)=>{
-    h+=`<div class="appcard"><div class="ico">${a.ico}</div><h3>${a.title}</h3>
+    h+=`<div class="appcard"><h3>${a.title}</h3>
       <p>${a.desc.replace(/\n/g,'<br>')}</p>
       <button class="btn-access" onclick="openApp(${i})">Access</button></div>`;
   });
@@ -338,7 +343,7 @@ async function openApp(i){
         `This access was scored <b>${b.risk_level} risk</b> (score ${b.risk_score}).\n`+
         `Reasons: ${(b.factors||[]).join("; ")}\n\nPlease re-verify with a fresh OTP before continuing.`);
     }else{
-      modal(e.status===403?"⛔ Access Denied":"Error",
+      modal(e.status===403?"Access Denied":"Error",
         e.status===403?"Your role does not permit this application.\nThis attempt has been logged and the admin alerted.":e.message);
     }
   }
@@ -362,7 +367,7 @@ async function renderPermissions(){
     h+="<p class='subtitle'>Features marked <b>Denied</b> are outside your role. Any attempt to access them is blocked and instantly alerts the administrator.</p>";
     h+="<div class='panel-narrow'><table><tr><th>Feature / Resource</th><th style='text-align:center;width:140px'>Access</th></tr>";
     d.permissions.forEach(x=>h+=`<tr><td>${x.feature}</td><td style='text-align:center'>
-      <span class="pill ${x.allowed?'pill-ok':'pill-bad'}">${x.allowed?'✓ Allowed':'✕ Denied'}</span></td></tr>`);
+      <span class="pill ${x.allowed?'pill-ok':'pill-bad'}">${x.allowed?'Allowed':'Denied'}</span></td></tr>`);
     setContent(h+"</table></div>");
   }catch(e){setContent("Error: "+e.message);}
 }
@@ -374,7 +379,7 @@ async function renderLogFeed(k){
     site:["/api/site-access?limit=100","Site Access Log",["Time","Method","Path","IP Address","Device / Browser"]]};
   const [url,title,cols]=map[k];
   try{const rows=await api(url);
-    let h=`<h2>${title}</h2><div style="text-align:center"><span class="livepill">● live data · ${rows.length} records</span></div>`;
+    let h=`<h2>${title}</h2><div style="text-align:center"><span class="livepill">live data · ${rows.length} records</span></div>`;
     h+=`<table><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr>`;
     rows.forEach(r=>{
       if(k==="access")h+=`<tr><td>${t19(r.timestamp)}</td><td>${r.username||""}</td><td>${r.action||""}</td><td>${r.resource||""}</td><td class="${scls(r.status)}">${r.status||""}</td><td>${r.ip_address||""}</td></tr>`;
@@ -388,8 +393,8 @@ async function renderLogFeed(k){
 
 async function renderSecurity(){
   try{const [m,al,au]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify")]);
-    let h=`<h2>Security Alerts &amp; Monitoring</h2><div style="text-align:center"><span class="livepill">● auto-refreshing every 3s</span></div>`;
-    h+=`<div style="text-align:center"><div class="badge ${au.intact?"ok":"bad"}">🔒 Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"⚠ TAMPERING DETECTED at entry #"+au.broken_at}</div></div>`;
+    let h=`<h2>Security Alerts &amp; Monitoring</h2><div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
+    h+=`<div style="text-align:center"><div class="badge ${au.intact?"ok":"bad"}">Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING DETECTED at entry #"+au.broken_at}</div></div>`;
     h+=`<div class="kpis" style="justify-content:center">
       <div class="kpi"><b>${m.total_users}</b><span>Users</span></div>
       <div class="kpi"><b>${m.total_logins}</b><span>Logins</span></div>
@@ -402,22 +407,29 @@ async function renderSecurity(){
       const canBlock=a.subject && a.subject!=="unknown";
       h+=`<tr><td><span class="pill ${a.severity==='HIGH'?'pill-bad':'pill-warn'}">${a.severity}</span></td>
         <td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td>
-        <td>${canBlock?`<button class="btn-block" onclick="blockUser('${a.subject}')">🚫 Block</button>`:""}</td></tr>`;
+        <td>${canBlock?`<button class="btn-block" onclick="blockUser('${a.subject}')">Block</button>`:""}</td></tr>`;
     });
-    if(!al.alerts.length)h+="<tr><td colspan='5' style='text-align:center' class='st-ok'>✓ No active threats detected</td></tr>";
+    if(!al.alerts.length)h+="<tr><td colspan='5' style='text-align:center' class='st-ok'>No active threats detected</td></tr>";
     setContent(h+"</table>");
   }catch(e){setContent("Error: "+e.message);}
 }
 
 /* ---- Risk & Policy (admin) — Phase 2 Zero Trust ---- */
-function riskColor(l){return l==="HIGH"?"#e74c3c":(l==="MEDIUM"?"#e67e22":"#27ae60");}
-function riskBadge(l){const c=l==="HIGH"?"rk-hi":(l==="MEDIUM"?"rk-med":"rk-lo");return `<span class="rk-badge ${c}">${l}</span>`;}
-function riskMeter(level,score){const w=Math.max(6,Math.min(100,score));
-  return `<span class="rk-meter"><span class="rk-bar"><i style="width:${w}%;background:${riskColor(level)}"></i></span><span class="rk-score">${score}</span></span>`;}
+const BAND_CLASS={None:"rk-none",Low:"rk-low",Medium:"rk-med",High:"rk-high",Critical:"rk-crit"};
+const BAND_COLOR={None:"#90a4ae",Low:"#27ae60",Medium:"#e67e22",High:"#cf5411",Critical:"#c0392b"};
+function riskBadge(l){return `<span class="rk-badge ${BAND_CLASS[l]||'rk-none'}">${l}</span>`;}
+function riskMeter(level,cvss){const w=Math.max(4,Math.min(100,(cvss||0)*10));
+  return `<span class="rk-meter"><span class="rk-bar"><i style="width:${w}%;background:${BAND_COLOR[level]||'#90a4ae'}"></i></span><span class="rk-score">${(cvss||0).toFixed(1)}</span></span>`;}
 function decisionBadge(d){
-  if(d==="REVOKE")return `<span class="rk-badge rk-hi">REVOKE</span>`;
+  if(d==="REVOKE")return `<span class="rk-badge rk-crit">REVOKE</span>`;
   if(d==="STEP_UP")return `<span class="rk-badge rk-med">STEP-UP</span>`;
-  return `<span class="rk-badge rk-lo">ALLOW</span>`;}
+  return `<span class="rk-badge rk-low">ALLOW</span>`;}
+function cvssLegend(){
+  const items=[["None","0.0","rk-none"],["Low","0.1–3.9","rk-low"],["Medium","4.0–6.9","rk-med"],
+    ["High","7.0–8.9","rk-high"],["Critical","9.0–10.0","rk-crit"]];
+  return `<div class="rk-legend"><b>CVSS severity rating</b>`+
+    items.map(i=>`<span class="${i[2]}">${i[0]} ${i[1]}</span>`).join("")+`</div>`;
+}
 function pipeStrip(){
   const steps=[["Identity",0],["MFA",0],["Device",1],["Context",0],["Risk Score",1],
     ["Policy Engine",1],["Decision",0],["Continuous Verify",1],["Auto Response",1]];
@@ -431,6 +443,7 @@ async function renderRisk(){
     let h=`<h2 class="rk-title">Risk &amp; Policy Engine</h2>`;
     h+=`<p class="subtitle">Risk-based access control applies to User and Viewer accounts. Administrator access is trusted.</p>`;
     h+=pipeStrip();
+    h+=cvssLegend();
     h+=`<div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
 
     // KPI cards
@@ -447,10 +460,10 @@ async function renderRisk(){
 
     // Active sessions
     h+=`<div class="rk-sec">Active Sessions <span class="tag">revoke to force re-authentication</span></div>`;
-    h+=`<table class="rk"><tr><th>User</th><th>Role</th><th>Risk Score</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
+    h+=`<table class="rk"><tr><th>User</th><th>Role</th><th>CVSS Score</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
     const act=sessions.filter(s=>s.active);
     act.forEach(s=>{
-      h+=`<tr><td><b>${s.username}</b></td><td>${s.role||""}</td><td>${riskBadge(s.risk_level)} ${riskMeter(s.risk_level,s.risk_score)}</td>
+      h+=`<tr><td><b>${s.username}</b></td><td>${s.role||""}</td><td>${riskBadge(s.risk_level)} ${riskMeter(s.risk_level,s.cvss)}</td>
         <td class="rk-mono">${s.device_fp}…</td><td>${s.ip_address||""}</td><td>${t19(s.created_at)}</td>
         <td><button class="btn-block" onclick="revokeSession(${s.id})">Revoke</button></td></tr>`;
     });
@@ -459,10 +472,10 @@ async function renderRisk(){
 
     // Risk decision feed
     h+=`<div class="rk-sec">Risk Decision Feed <span class="tag">every scored login &amp; access</span></div>`;
-    h+=`<table class="rk"><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>Risk Score</th><th>Decision</th><th>Signals</th></tr>`;
+    h+=`<table class="rk"><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>CVSS Score</th><th>Decision</th><th>Signals</th></tr>`;
     events.slice(0,40).forEach(e=>{
       h+=`<tr><td>${t19(e.timestamp)}</td><td><b>${e.username||""}</b></td><td>${e.phase||""}</td><td>${e.resource||""}</td>
-        <td>${riskBadge(e.level)} ${riskMeter(e.level,e.score)}</td><td>${decisionBadge(e.decision)}</td>
+        <td>${riskBadge(e.level)} ${riskMeter(e.level,e.cvss)}</td><td>${decisionBadge(e.decision)}</td>
         <td class="muted" style="font-size:12px">${e.factors||""}</td></tr>`;
     });
     if(!events.length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No risk events yet.</td></tr>";
@@ -499,7 +512,7 @@ async function renderUsers(){
       let action="";
       if(u.role!=="Admin") action=u.blocked
         ?`<button class="btn-unblock" onclick="unblockUser('${u.username}')">Unblock</button>`
-        :`<button class="btn-block" onclick="blockUser('${u.username}')">🚫 Block</button>`;
+        :`<button class="btn-block" onclick="blockUser('${u.username}')">Block</button>`;
       else action="<span style='color:#7f8c8d;font-size:12px'>—</span>";
       h+=`<tr><td>${u.username}</td><td>${u.email||""}</td><td>${u.role}</td><td>${status}</td><td>${action}</td></tr>`;
     });

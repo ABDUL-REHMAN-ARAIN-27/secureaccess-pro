@@ -38,10 +38,11 @@ def list_risk_events():
 @roles_required(ROLE_ADMIN)
 def risk_metrics():
     since = datetime.utcnow() - timedelta(minutes=60)
+    severe = ("High", "Critical")
     active = [s for s in SessionToken.query.all() if s.is_active()]
     return jsonify({
         "active_sessions": len(active),
-        "high_risk_sessions": len([s for s in active if s.risk_level == "HIGH"]),
+        "high_risk_sessions": len([s for s in active if s.risk_level in severe]),
         "trusted_devices": TrustedDevice.query.filter_by(trusted=True).count(),
         "known_devices": TrustedDevice.query.count(),
         "revocations": SessionToken.query.filter_by(revoked=True).count(),
@@ -49,7 +50,7 @@ def risk_metrics():
             RiskEvent.decision == "STEP_UP", RiskEvent.timestamp >= since
         ).count(),
         "high_events_1h": RiskEvent.query.filter(
-            RiskEvent.level == "HIGH", RiskEvent.timestamp >= since
+            RiskEvent.level.in_(severe), RiskEvent.timestamp >= since
         ).count(),
         "generated_at": datetime.utcnow().isoformat(),
     })

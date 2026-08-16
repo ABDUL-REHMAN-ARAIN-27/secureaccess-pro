@@ -243,21 +243,21 @@ def _login_dev(client, totp_for, username, password, device="dev-1"):
     return resp, headers
 
 
-def test_login_returns_risk_assessment(client, totp_for):
-    # A non-admin user is scored; a brand-new device is not yet trusted.
+def test_login_returns_cvss_risk_assessment(client, totp_for):
+    # A non-admin user is scored on the CVSS severity scale.
     resp, _ = _login_dev(client, totp_for, "user", "User@123")
     risk = resp.get_json()["risk"]
-    assert risk["level"] in ("LOW", "MEDIUM", "HIGH")
-    assert isinstance(risk["score"], int)
+    assert risk["level"] in ("None", "Low", "Medium", "High", "Critical")
+    assert 0.0 <= risk["cvss"] <= 10.0
     assert risk["known_device"] is False
 
 
 def test_admin_is_exempt_from_risk_scoring(client, totp_for):
-    # The administrator is the trusted authority — never risk-flagged.
+    # The administrator is the trusted authority — never risk-flagged (CVSS None).
     resp, ah = _login_dev(client, totp_for, "admin", "Admin@123")
     risk = resp.get_json()["risk"]
-    assert risk["level"] == "LOW"
-    assert risk["score"] == 0
+    assert risk["level"] == "None"
+    assert risk["cvss"] == 0.0
     assert risk["known_device"] is True
     # And sensitive access is always allowed for the admin.
     assert client.get("/api/protected/finance", headers=ah).status_code == 200
