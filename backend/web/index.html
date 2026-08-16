@@ -77,6 +77,30 @@
   .kpi span{font-size:11px;color:#7f8c8d}
   .sech{color:var(--navy);font-size:16px;margin:20px 0 8px;border-bottom:2px solid #eef2f4;padding-bottom:5px}
   .muted{color:#95a5a6;font-weight:normal;font-size:12px}
+  /* ---- Risk & Policy premium styling ---- */
+  .rk-title{text-align:center;margin:2px 0 2px}
+  .rk-pipe{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0 6px}
+  .rk-step{background:#eef3f7;color:#40566a;border:1px solid #dde5ea;border-radius:20px;padding:5px 13px;font-size:12px;font-weight:600}
+  .rk-step.key{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .rk-arrow{color:#b7c2ca;font-weight:bold;font-size:13px}
+  .rk-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin:16px 0 6px}
+  @media(max-width:920px){.rk-kpis{grid-template-columns:repeat(3,1fr)}}
+  .rk-card{background:#fff;border:1px solid #e6ebee;border-radius:11px;padding:15px 10px 13px;text-align:center;
+    box-shadow:0 1px 4px rgba(20,40,60,.06);border-top:3px solid var(--accent,#3498db)}
+  .rk-card .ic{font-size:19px;line-height:1}
+  .rk-card .num{font-size:27px;font-weight:800;color:var(--navy);line-height:1.1;margin-top:3px}
+  .rk-card .lbl{font-size:10.5px;color:#8a97a0;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;font-weight:600}
+  .rk-sec{display:flex;align-items:center;gap:8px;color:var(--navy);font-size:15px;font-weight:700;
+    margin:24px 0 11px;padding-bottom:7px;border-bottom:2px solid #eef2f4}
+  .rk-sec .tag{font-weight:400;font-size:12px;color:#9aa7af;margin-left:auto}
+  .rk-meter{display:inline-flex;align-items:center;gap:7px;vertical-align:middle}
+  .rk-bar{width:54px;height:7px;border-radius:4px;background:#edf1f3;overflow:hidden;position:relative}
+  .rk-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .rk-score{font-size:12px;color:#7f8c8d;font-weight:700;min-width:22px}
+  .rk-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 11px;border-radius:20px;font-size:11.5px;font-weight:700}
+  .rk-hi{background:#fdecea;color:#c0392b} .rk-med{background:#fef5e7;color:#c87f0a} .rk-lo{background:#eafaf1;color:#1e8449}
+  table.rk{box-shadow:0 1px 4px rgba(20,40,60,.06);border-radius:9px;overflow:hidden}
+  .rk-mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#8a97a0}
   .btn-block{background:#e74c3c;color:#fff;padding:5px 12px;font-size:12px}
   .btn-unblock{background:#27ae60;color:#fff;padding:5px 12px;font-size:12px}
   .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
@@ -386,53 +410,73 @@ async function renderSecurity(){
 }
 
 /* ---- Risk & Policy (admin) — Phase 2 Zero Trust ---- */
-function riskPill(l){const c=l==="HIGH"?"pill-bad":(l==="MEDIUM"?"pill-warn":"pill-ok");return `<span class="pill ${c}">${l}</span>`;}
-function decisionPill(d){const c=d==="REVOKE"?"pill-bad":(d==="STEP_UP"?"pill-warn":"pill-ok");
-  const ico=d==="REVOKE"?"⛔":(d==="STEP_UP"?"🔐":"✓");return `<span class="pill ${c}">${ico} ${d}</span>`;}
+function riskColor(l){return l==="HIGH"?"#e74c3c":(l==="MEDIUM"?"#e67e22":"#27ae60");}
+function riskBadge(l){const c=l==="HIGH"?"rk-hi":(l==="MEDIUM"?"rk-med":"rk-lo");
+  const ic=l==="HIGH"?"⬤":(l==="MEDIUM"?"⬤":"⬤");return `<span class="rk-badge ${c}">${ic} ${l}</span>`;}
+function riskMeter(level,score){const w=Math.max(6,Math.min(100,score));
+  return `<span class="rk-meter"><span class="rk-bar"><i style="width:${w}%;background:${riskColor(level)}"></i></span><span class="rk-score">${score}</span></span>`;}
+function decisionBadge(d){
+  if(d==="REVOKE")return `<span class="rk-badge rk-hi">⛔ REVOKE</span>`;
+  if(d==="STEP_UP")return `<span class="rk-badge rk-med">🔐 STEP-UP</span>`;
+  return `<span class="rk-badge rk-lo">✓ ALLOW</span>`;}
+function pipeStrip(){
+  const steps=[["Identity",0],["MFA",0],["Device",1],["Context",0],["Risk Score",1],
+    ["Policy Engine",1],["Decision",0],["Continuous Verify",1],["Auto Response",1]];
+  return `<div class="rk-pipe">`+steps.map((s,i)=>
+    `<span class="rk-step${s[1]?" key":""}">${s[0]}</span>`+
+    (i<steps.length-1?`<span class="rk-arrow">→</span>`:"")).join("")+`</div>`;
+}
 async function renderRisk(){
   try{const [m,sessions,events,devices]=await Promise.all(
     [api("/api/risk-metrics"),api("/api/sessions"),api("/api/risk-events"),api("/api/devices")]);
-    let h=`<h2>Risk &amp; Policy Engine</h2>`;
-    h+=`<p class="subtitle">Identity → MFA → Device → Context → <b>Risk Score</b> → Policy Engine → Access Decision → <b>Continuous Verification</b> → Automatic Response.</p>`;
+    let h=`<h2 class="rk-title">Risk &amp; Policy Engine</h2>`;
+    h+=pipeStrip();
     h+=`<div style="text-align:center"><span class="livepill">● auto-refreshing every 3s</span></div>`;
-    h+=`<div class="kpis" style="justify-content:center">
-      <div class="kpi" style="color:#2980b9"><b>${m.active_sessions}</b><span>Active Sessions</span></div>
-      <div class="kpi" style="color:#c0392b"><b>${m.high_risk_sessions}</b><span>High-Risk</span></div>
-      <div class="kpi" style="color:#27ae60"><b>${m.trusted_devices}</b><span>Trusted Devices</span></div>
-      <div class="kpi" style="color:#e67e22"><b>${m.step_ups_1h}</b><span>Step-ups (1h)</span></div>
-      <div class="kpi" style="color:#c0392b"><b>${m.high_events_1h}</b><span>High Events (1h)</span></div>
-      <div class="kpi" style="color:#8e44ad"><b>${m.revocations}</b><span>Revocations</span></div></div>`;
+
+    // Premium KPI cards
+    const cards=[
+      ["🟢",m.active_sessions,"Active Sessions","#3498db"],
+      ["⚠️",m.high_risk_sessions,"High-Risk","#e74c3c"],
+      ["🖥️",m.trusted_devices,"Trusted Devices","#27ae60"],
+      ["🔐",m.step_ups_1h,"Step-ups (1h)","#e67e22"],
+      ["🚨",m.high_events_1h,"High Events (1h)","#c0392b"],
+      ["⛔",m.revocations,"Revocations","#8e44ad"],
+    ];
+    h+=`<div class="rk-kpis">`+cards.map(c=>
+      `<div class="rk-card" style="--accent:${c[3]}"><div class="ic">${c[0]}</div>
+        <div class="num">${c[1]}</div><div class="lbl">${c[2]}</div></div>`).join("")+`</div>`;
 
     // Active sessions
-    h+=`<h3 class="sech">Active Sessions <span class="muted">— revoke to force re-authentication</span></h3>`;
-    h+=`<table><tr><th>User</th><th>Role</th><th>Risk</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
-    sessions.filter(s=>s.active).forEach(s=>{
-      h+=`<tr><td>${s.username}</td><td>${s.role||""}</td><td>${riskPill(s.risk_level)} <span class="muted">${s.risk_score}</span></td>
-        <td>${s.device_fp}…</td><td>${s.ip_address||""}</td><td>${t19(s.created_at)}</td>
+    h+=`<div class="rk-sec">🟢 Active Sessions <span class="tag">revoke to force re-authentication</span></div>`;
+    h+=`<table class="rk"><tr><th>User</th><th>Role</th><th>Risk Score</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
+    const act=sessions.filter(s=>s.active);
+    act.forEach(s=>{
+      h+=`<tr><td><b>${s.username}</b></td><td>${s.role||""}</td><td>${riskBadge(s.risk_level)} ${riskMeter(s.risk_level,s.risk_score)}</td>
+        <td class="rk-mono">${s.device_fp}…</td><td>${s.ip_address||""}</td><td>${t19(s.created_at)}</td>
         <td><button class="btn-block" onclick="revokeSession(${s.id})">⛔ Revoke</button></td></tr>`;
     });
-    if(!sessions.filter(s=>s.active).length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No active sessions.</td></tr>";
+    if(!act.length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No active sessions.</td></tr>";
     h+="</table>";
 
     // Risk decision feed
-    h+=`<h3 class="sech">Risk Decision Feed <span class="muted">— every scored access</span></h3>`;
-    h+=`<table><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>Score</th><th>Level</th><th>Decision</th><th>Reasons</th></tr>`;
+    h+=`<div class="rk-sec">📈 Risk Decision Feed <span class="tag">every scored login &amp; access</span></div>`;
+    h+=`<table class="rk"><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>Risk Score</th><th>Decision</th><th>Signals</th></tr>`;
     events.slice(0,40).forEach(e=>{
-      h+=`<tr><td>${t19(e.timestamp)}</td><td>${e.username||""}</td><td>${e.phase||""}</td><td>${e.resource||""}</td>
-        <td>${e.score}</td><td>${riskPill(e.level)}</td><td>${decisionPill(e.decision)}</td>
+      h+=`<tr><td>${t19(e.timestamp)}</td><td><b>${e.username||""}</b></td><td>${e.phase||""}</td><td>${e.resource||""}</td>
+        <td>${riskBadge(e.level)} ${riskMeter(e.level,e.score)}</td><td>${decisionBadge(e.decision)}</td>
         <td class="muted" style="font-size:12px">${e.factors||""}</td></tr>`;
     });
-    if(!events.length)h+="<tr><td colspan='8' style='text-align:center' class='muted'>No risk events yet.</td></tr>";
+    if(!events.length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No risk events yet.</td></tr>";
     h+="</table>";
 
     // Device trust
-    h+=`<h3 class="sech">Device Trust <span class="muted">— untrust to require step-up next time</span></h3>`;
-    h+=`<table><tr><th>User</th><th>Device</th><th>Fingerprint</th><th>Status</th><th>Last Seen</th><th style="width:150px">Action</th></tr>`;
+    h+=`<div class="rk-sec">🖥️ Device Trust <span class="tag">untrust to require step-up next time</span></div>`;
+    h+=`<table class="rk"><tr><th>User</th><th>Device</th><th>Fingerprint</th><th>Status</th><th>Last Seen</th><th style="width:150px">Action</th></tr>`;
     devices.forEach(d=>{
-      const st=d.trusted?`<span class="pill pill-ok">Trusted</span>`:`<span class="pill pill-warn">Untrusted</span>`;
-      const act=d.trusted?`<button class="btn-block" onclick="untrustDevice(${d.id})">Untrust</button>`
+      const st=d.trusted?`<span class="rk-badge rk-lo">✓ Trusted</span>`:`<span class="rk-badge rk-med">⚠ Untrusted</span>`;
+      const a=d.trusted?`<button class="btn-block" onclick="untrustDevice(${d.id})">Untrust</button>`
         :`<button class="btn-unblock" onclick="trustDevice(${d.id})">Trust</button>`;
-      h+=`<tr><td>${d.username}</td><td>${d.label||""}</td><td class="muted">${d.device_fp}…</td><td>${st}</td><td>${t19(d.last_seen)}</td><td>${act}</td></tr>`;
+      h+=`<tr><td><b>${d.username}</b></td><td>${d.label||""}</td><td class="rk-mono">${d.device_fp}…</td><td>${st}</td><td>${t19(d.last_seen)}</td><td>${a}</td></tr>`;
     });
     if(!devices.length)h+="<tr><td colspan='6' style='text-align:center' class='muted'>No devices recorded yet.</td></tr>";
     setContent(h+"</table>");
