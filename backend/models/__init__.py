@@ -3,6 +3,7 @@
 from .user import User, ROLES, ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
 from .log import AccessLog, LoginHistory, SiteAccess
 from .patient import Patient, SEVERITIES, STATUSES
+from .zerotrust import TrustedDevice, SessionToken, RiskEvent
 
 __all__ = [
     "User",
@@ -16,4 +17,7 @@ __all__ = [
     "Patient",
     "SEVERITIES",
     "STATUSES",
+    "TrustedDevice",
+    "SessionToken",
+    "RiskEvent",
 ]

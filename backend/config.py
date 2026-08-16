@@ -73,6 +73,34 @@ class Config:
     RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "30"))
     RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60"))
 
+    # --- Phase 2: Risk-Based Access Control (risk engine weights) ---
+    # A login/access request is scored 0-100 from these signals; the total maps
+    # to a LOW / MEDIUM / HIGH band that the policy engine turns into a decision.
+    RISK_WEIGHT_FAILED = int(os.environ.get("RISK_WEIGHT_FAILED", "12"))       # per recent failed attempt
+    RISK_WEIGHT_NEW_DEVICE = int(os.environ.get("RISK_WEIGHT_NEW_DEVICE", "30"))  # unrecognised device
+    RISK_WEIGHT_NEW_IP = int(os.environ.get("RISK_WEIGHT_NEW_IP", "20"))       # never-seen source IP
+    RISK_WEIGHT_OFFHOURS = int(os.environ.get("RISK_WEIGHT_OFFHOURS", "10"))   # outside 06:00-22:00
+    RISK_WEIGHT_BLOCKED = int(os.environ.get("RISK_WEIGHT_BLOCKED", "100"))    # admin-blocked account
+    RISK_WEIGHT_LOCKED = int(os.environ.get("RISK_WEIGHT_LOCKED", "60"))       # locked-out account
+    RISK_WEIGHT_DEVICE_MISMATCH = int(os.environ.get("RISK_WEIGHT_DEVICE_MISMATCH", "45"))  # session hijack signal
+    RISK_WEIGHT_IP_MISMATCH = int(os.environ.get("RISK_WEIGHT_IP_MISMATCH", "20"))          # IP changed mid-session
+
+    # Resource sensitivity added to the score during continuous verification.
+    # Kept below the MEDIUM band so a normal, trusted session flows freely; only
+    # a real anomaly (blocked/locked account, device/IP drift, untrusted device)
+    # pushes a sensitive access into STEP_UP or REVOKE territory.
+    RISK_SENSITIVITY = {
+        "Finance Dashboard": 20,
+        "Patient Records": 18,
+        "HR Portal": 12,
+        "Document Manager": 5,
+    }
+    RISK_WEIGHT_UNTRUSTED_AT_ACCESS = int(os.environ.get("RISK_WEIGHT_UNTRUSTED_AT_ACCESS", "20"))
+
+    # Band thresholds (inclusive lower bounds).
+    RISK_MEDIUM = int(os.environ.get("RISK_MEDIUM", "30"))
+    RISK_HIGH = int(os.environ.get("RISK_HIGH", "60"))
+
     # --- Server ---
     HOST = os.environ.get("HOST", "0.0.0.0")
     PORT = int(os.environ.get("PORT", "5000"))

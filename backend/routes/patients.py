@@ -17,7 +17,7 @@ from flask_jwt_extended import get_jwt_identity
 
 from extensions import db
 from models import Patient, SEVERITIES, STATUSES, ROLE_ADMIN, ROLE_USER
-from security import roles_required, record_access
+from security import roles_required, record_access, continuous_verify
 
 patients_bp = Blueprint("patients", __name__)
 
@@ -40,6 +40,7 @@ def _summary():
 # --------------------------------------------------------------------------- #
 @patients_bp.route("/api/protected/patients", methods=["GET"])
 @roles_required(ROLE_ADMIN, ROLE_USER)
+@continuous_verify("Patient Records")
 def list_patients():
     record_access(get_jwt_identity(), "ACCESS", "Patient Records", "GRANTED")
     patients = Patient.query.order_by(Patient.patient_id).all()

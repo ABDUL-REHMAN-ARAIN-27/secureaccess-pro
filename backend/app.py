@@ -32,6 +32,10 @@ _TRACK_SKIP = {
     "admin.get_metrics",
     "admin.get_alerts",
     "admin.verify_audit",
+    "zerotrust.list_risk_events",
+    "zerotrust.list_sessions",
+    "zerotrust.list_devices",
+    "zerotrust.risk_metrics",
 }
 
 
@@ -43,6 +47,7 @@ def create_app(config_class=Config):
     jwt.init_app(app)
     CORS(app)
 
+    _register_jwt_hooks(app)
     _register_blueprints(app)
     _register_request_hooks(app)
     _register_error_handlers(app)
@@ -74,16 +79,46 @@ def create_app(config_class=Config):
     return app
 
 
+def _register_jwt_hooks(app):
+    """Phase 2 — make the stateless JWT revocable via the SessionToken store, so
+    continuous verification can kill a live session."""
+
+    @jwt.token_in_blocklist_loader
+    def _is_revoked(_jwt_header, jwt_payload):
+        from models import SessionToken
+        jti = jwt_payload.get("jti")
+        if not jti:
+            return False
+        try:
+            return (
+                SessionToken.query.filter_by(jti=jti, revoked=True).first() is not None
+            )
+        except Exception:
+            return False
+
+    @jwt.revoked_token_loader
+    def _revoked_response(_jwt_header, _jwt_payload):
+        return (
+            jsonify({
+                "error": "Session revoked. Please re-authenticate.",
+                "session_revoked": True,
+            }),
+            401,
+        )
+
+
 def _register_blueprints(app):
     from routes.auth import auth_bp
     from routes.resources import resources_bp
     from routes.admin import admin_bp
     from routes.patients import patients_bp
+    from routes.zerotrust import zerotrust_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(resources_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(patients_bp)
+    app.register_blueprint(zerotrust_bp)
 
 
 def _register_request_hooks(app):

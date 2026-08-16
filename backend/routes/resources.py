@@ -14,7 +14,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
 
 import datastore
 from models import ROLE_ADMIN, ROLE_USER, ROLE_VIEWER
-from security import roles_required, record_access
+from security import roles_required, record_access, continuous_verify
 
 resources_bp = Blueprint("resources", __name__)
 
@@ -45,6 +45,7 @@ def my_permissions():
 
 @resources_bp.route("/api/protected/hr", methods=["GET"])
 @roles_required(ROLE_ADMIN, ROLE_USER)
+@continuous_verify("HR Portal")
 def hr_portal():
     record_access(get_jwt_identity(), "ACCESS", "HR Portal", "GRANTED")
     return jsonify({
@@ -56,6 +57,7 @@ def hr_portal():
 
 @resources_bp.route("/api/protected/finance", methods=["GET"])
 @roles_required(ROLE_ADMIN)
+@continuous_verify("Finance Dashboard")
 def finance_dashboard():
     record_access(get_jwt_identity(), "ACCESS", "Finance Dashboard", "GRANTED")
     return jsonify({

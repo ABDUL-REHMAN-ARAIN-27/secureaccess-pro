@@ -42,6 +42,26 @@ policy, and every action is logged to a real-time security dashboard.
 | **Anomaly detection / alerts** | SOC-style alerts: brute-force, privilege probing, account lockouts |
 | **Security hardening** | NIST-style password policy + API rate limiting (429) |
 
+### Phase 2 — Risk-aware Zero Trust (advanced access control)
+
+The system goes beyond static "login → MFA → RBAC → access". Every login **and**
+every sensitive access is scored and re-evaluated by a policy engine:
+
+```
+Identity → MFA → Device → Context → Risk Score → Policy Engine
+        → Access Decision → Continuous Monitoring → Automatic Response
+```
+
+| Upgrade | Implementation |
+|---|---|
+| **Risk-Based Access Control** | A 0–100 risk score from live signals — failed attempts, new/unknown IP, unknown device, off-hours, account state, resource sensitivity — mapped to LOW / MEDIUM / HIGH bands (`risk.py`). |
+| **Device Trust** | Each browser carries a random, non-PII device id; a per-user fingerprint is trusted after full MFA. Unknown/untrusted devices raise risk; an admin can un-trust a device to force step-up (`models/zerotrust.py`, `TrustedDevice`). |
+| **Continuous Verification** | Sensitive resources are re-scored on **every** request via a `continuous_verify` guard. MEDIUM → step-up (re-MFA), HIGH → session revoked automatically + alert. |
+| **Real session revocation** | Each JWT is tracked in a `SessionToken` store and checked by a JWT blocklist loader, so a stateless token can be **killed mid-flight** — closing the classic "valid token after an account is blocked" gap. |
+| **Policy engine** | Turns a risk band into an automatic decision: `ALLOW` / `STEP_UP` / `REVOKE`, all recorded to a `RiskEvent` audit trail. |
+| **Risk & Policy dashboard** | New admin tab: active sessions (with one-click revoke), a live risk-decision feed, and device-trust management. |
+| **Authenticator-app MFA** | TOTP (Google Authenticator / Authy) is a first-class second factor alongside email OTP; `provisioning_uri` returned at registration for QR enrolment. |
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |
@@ -63,11 +83,13 @@ secureaccess-pro/
 │   ├── app.py               # application factory + request tracking
 │   ├── config.py            # env-driven configuration
 │   ├── extensions.py        # db + jwt instances
-│   ├── security.py          # RBAC decorator + audit logging
+│   ├── security.py          # RBAC decorator + continuous-verify guard + audit
+│   ├── risk.py              # Phase 2 risk engine + policy engine
 │   ├── seed.py              # create Admin/User/Viewer demo accounts
 │   ├── show_code.py         # print a user's current TOTP (demo helper)
-│   ├── models/              # User, AccessLog, LoginHistory, SiteAccess
-│   ├── routes/              # auth, resources (RBAC apps), admin (monitoring)
+│   ├── models/              # User, AccessLog, LoginHistory, SiteAccess,
+│   │                        #   TrustedDevice, SessionToken, RiskEvent (Phase 2)
+│   ├── routes/              # auth, resources, admin, patients, zerotrust (Phase 2)
 │   ├── datastore.py         # loads the confidential data served by the apps
 │   ├── data/                # confidential data behind the gateway (synthetic)
 │   │   ├── hr/employees.json

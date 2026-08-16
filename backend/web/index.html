@@ -75,6 +75,8 @@
   .kpi{background:#f4f6f7;border:1px solid #e5e9ec;border-radius:6px;padding:10px 16px;text-align:center;min-width:92px}
   .kpi b{display:block;font-size:20px;color:var(--navy)}
   .kpi span{font-size:11px;color:#7f8c8d}
+  .sech{color:var(--navy);font-size:16px;margin:20px 0 8px;border-bottom:2px solid #eef2f4;padding-bottom:5px}
+  .muted{color:#95a5a6;font-weight:normal;font-size:12px}
   .btn-block{background:#e74c3c;color:#fff;padding:5px 12px;font-size:12px}
   .btn-unblock{background:#27ae60;color:#fff;padding:5px 12px;font-size:12px}
   .badge{padding:9px 13px;border-radius:4px;font-weight:bold;display:inline-block;margin-bottom:12px}
@@ -166,8 +168,16 @@
 <div id="modal-host"></div>
 
 <script>
-let token=null, role=null, username=null, email=null;
+let token=null, role=null, username=null, email=null, lastRisk=null;
 let monitorTimer=null;
+
+/* Phase 2: a stable per-browser device id (never PII) for device-trust. */
+function deviceId(){
+  let d=localStorage.getItem("sap_device_id");
+  if(!d){d="dev-"+Math.random().toString(36).slice(2)+Date.now().toString(36);
+    localStorage.setItem("sap_device_id",d);}
+  return d;
+}
 
 /* ---------- helpers ---------- */
 function show(v){for(const id of["login","register","forgot","app"])document.getElementById("view-"+id).classList.add("hidden");
@@ -176,11 +186,20 @@ function showLogin(){show("login");} function showRegister(){show("register");} 
 function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.className="authmsg "+(ok?"ok":"err");}
 function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
-  opts.headers=Object.assign({"Content-Type":"application/json"},opts.headers||{});
+  opts.headers=Object.assign({"Content-Type":"application/json","X-Device-Id":deviceId()},opts.headers||{});
   if(token)opts.headers["Authorization"]="Bearer "+token;
   const r=await fetch(path,opts); let b={}; try{b=await r.json()}catch(e){}
-  if(!r.ok)throw{status:r.status,message:b.error||b.detail||r.statusText,body:b};
+  if(!r.ok){
+    // Phase 2: a revoked session ends the session immediately (401 blocklist or
+    // 403 from continuous verification both carry session_revoked).
+    if(b.session_revoked){handleRevoked(b.error||"Session revoked.");}
+    throw{status:r.status,message:b.error||b.detail||r.statusText,body:b};
+  }
   return b;
+}
+function handleRevoked(msg){
+  stopMonitor(); token=role=username=null;
+  show("login"); amsg("li-msg","🔒 "+msg+" Please sign in again.",false);
 }
 function stopMonitor(){if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}}
 function t19(x){return(x||"").replace("T"," ").slice(0,19);}
@@ -190,14 +209,14 @@ function scls(s){return["DENIED","FAILED","LOCKED"].includes(s)?"st-bad":(["GRAN
 async function requestOtp(){
   const u=val("li-user"),p=val("li-pass");
   if(!u||!p)return amsg("li-msg","Enter username and password first.",false);
-  try{const d=await api("/api/request-otp",{method:"POST",body:JSON.stringify({username:u,password:p})});
+  try{const d=await api("/api/request-otp",{method:"POST",body:JSON.stringify({username:u,password:p,device_id:deviceId()})});
     if(d.dev_code)document.getElementById("li-otp").value=d.dev_code;
     amsg("li-msg",d.message,true);}catch(e){amsg("li-msg",e.message,false);}
 }
 async function login(){
   try{const d=await api("/api/login",{method:"POST",body:JSON.stringify(
-    {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp")})});
-    token=d.token;role=d.role;username=d.username;email=d.email;enterApp();
+    {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp"),device_id:deviceId()})});
+    token=d.token;role=d.role;username=d.username;email=d.email;lastRisk=d.risk||null;enterApp();
   }catch(e){amsg("li-msg",e.message,false);}
 }
 async function register(){
@@ -207,7 +226,10 @@ async function register(){
     amsg("rg-msg",d.message+" (Role: "+d.role+")",true); setTimeout(showLogin,3500);
   }catch(e){amsg("rg-msg",e.message,false);}
 }
-function logout(){stopMonitor();token=role=username=null;document.getElementById("li-otp").value="";show("login");}
+async function logout(){
+  try{await api("/api/logout",{method:"POST"});}catch(e){}  // revoke the session server-side
+  stopMonitor();token=role=username=null;document.getElementById("li-otp").value="";show("login");
+}
 
 async function sendReset(){
   const u=val("fp-user");
@@ -231,7 +253,7 @@ const APPS=[
   {ico:"📁",title:"Documents",desc:"Company files\nShared documents",roles:["Admin","User","Viewer"],path:"/api/protected/documents"},
 ];
 function tabsFor(r){
-  if(r==="Admin")return[["apps","Applications"],["access","Access Logs"],["login","Login History"],
+  if(r==="Admin")return[["apps","Applications"],["risk","Risk & Policy"],["access","Access Logs"],["login","Login History"],
     ["site","Site Access Log"],["alerts","Security Alerts"],["users","Users"],["patients","Patients"]];
   return[["apps","Applications"]];
 }
@@ -253,6 +275,7 @@ function selectTab(k){
   else if(k==="perms")renderPermissions();
   else if(k==="patients")renderPatients();
   else if(k==="users")renderUsers();
+  else if(k==="risk"){renderRisk();monitorTimer=setInterval(renderRisk,3000);}
   else if(k==="alerts"){renderSecurity();monitorTimer=setInterval(renderSecurity,3000);}
   else renderLogFeed(k);
 }
@@ -260,7 +283,13 @@ function tabLabel(k){return (tabsFor(role).find(t=>t[0]===k)||[,k])[1];}
 function setContent(html){document.getElementById("content").innerHTML=html;}
 
 function renderApps(){
-  let h='<h2>Protected Applications</h2><div class="cards">';
+  let h='<h2>Protected Applications</h2>';
+  if(lastRisk){
+    const lv=lastRisk.level, c=lv==="HIGH"?"pill-bad":(lv==="MEDIUM"?"pill-warn":"pill-ok");
+    const dev=lastRisk.known_device?"🖥 Trusted device":"🆕 New device";
+    h+=`<div style="text-align:center;margin:-6px 0 16px"><span class="pill ${c}">${dev} · Login risk: ${lv} (${lastRisk.score})</span></div>`;
+  }
+  h+='<div class="cards">';
   APPS.filter(a=>a.roles.includes(role)).forEach((a,i)=>{
     h+=`<div class="appcard"><div class="ico">${a.ico}</div><h3>${a.title}</h3>
       <p>${a.desc.replace(/\n/g,'<br>')}</p>
@@ -274,8 +303,21 @@ async function openApp(i){
     if(a.title==="Patient Records")modal("Access Granted — Patient Records",patientsTable(d));
     else if(a.title==="Documents")modal("Access Granted — Documents",docsTable(d));
     else modal("Access Granted — "+a.title,pretty(d.data||d));
-  }catch(e){modal(e.status===403?"⛔ Access Denied":"Error",
-    e.status===403?"Your role does not permit this application.\nThis attempt has been logged and the admin alerted.":e.message);}
+  }catch(e){
+    const b=e.body||{};
+    if(b.session_revoked){
+      modal("🔒 Session Revoked — Continuous Verification",
+        `This access was scored <b>${b.risk_level} risk</b> (score ${b.risk_score}).\n`+
+        `Reasons: ${(b.factors||[]).join("; ")}\n\nYour session has been revoked. Please sign in again.`);
+    }else if(b.step_up_required){
+      modal("🔐 Step-Up Verification Required",
+        `This access was scored <b>${b.risk_level} risk</b> (score ${b.risk_score}).\n`+
+        `Reasons: ${(b.factors||[]).join("; ")}\n\nPlease re-verify with a fresh OTP before continuing.`);
+    }else{
+      modal(e.status===403?"⛔ Access Denied":"Error",
+        e.status===403?"Your role does not permit this application.\nThis attempt has been logged and the admin alerted.":e.message);
+    }
+  }
 }
 function pretty(o,ind=0){const pad="  ".repeat(ind);let s="";
   if(Array.isArray(o)){o.forEach(v=>s+=pad+"• "+(typeof v==="object"?Object.entries(v).map(([k,x])=>k+"="+x).join("  "):v)+"\n");}
@@ -342,6 +384,66 @@ async function renderSecurity(){
     setContent(h+"</table>");
   }catch(e){setContent("Error: "+e.message);}
 }
+
+/* ---- Risk & Policy (admin) — Phase 2 Zero Trust ---- */
+function riskPill(l){const c=l==="HIGH"?"pill-bad":(l==="MEDIUM"?"pill-warn":"pill-ok");return `<span class="pill ${c}">${l}</span>`;}
+function decisionPill(d){const c=d==="REVOKE"?"pill-bad":(d==="STEP_UP"?"pill-warn":"pill-ok");
+  const ico=d==="REVOKE"?"⛔":(d==="STEP_UP"?"🔐":"✓");return `<span class="pill ${c}">${ico} ${d}</span>`;}
+async function renderRisk(){
+  try{const [m,sessions,events,devices]=await Promise.all(
+    [api("/api/risk-metrics"),api("/api/sessions"),api("/api/risk-events"),api("/api/devices")]);
+    let h=`<h2>Risk &amp; Policy Engine</h2>`;
+    h+=`<p class="subtitle">Identity → MFA → Device → Context → <b>Risk Score</b> → Policy Engine → Access Decision → <b>Continuous Verification</b> → Automatic Response.</p>`;
+    h+=`<div style="text-align:center"><span class="livepill">● auto-refreshing every 3s</span></div>`;
+    h+=`<div class="kpis" style="justify-content:center">
+      <div class="kpi" style="color:#2980b9"><b>${m.active_sessions}</b><span>Active Sessions</span></div>
+      <div class="kpi" style="color:#c0392b"><b>${m.high_risk_sessions}</b><span>High-Risk</span></div>
+      <div class="kpi" style="color:#27ae60"><b>${m.trusted_devices}</b><span>Trusted Devices</span></div>
+      <div class="kpi" style="color:#e67e22"><b>${m.step_ups_1h}</b><span>Step-ups (1h)</span></div>
+      <div class="kpi" style="color:#c0392b"><b>${m.high_events_1h}</b><span>High Events (1h)</span></div>
+      <div class="kpi" style="color:#8e44ad"><b>${m.revocations}</b><span>Revocations</span></div></div>`;
+
+    // Active sessions
+    h+=`<h3 class="sech">Active Sessions <span class="muted">— revoke to force re-authentication</span></h3>`;
+    h+=`<table><tr><th>User</th><th>Role</th><th>Risk</th><th>Device</th><th>IP Address</th><th>Started</th><th style="width:110px">Action</th></tr>`;
+    sessions.filter(s=>s.active).forEach(s=>{
+      h+=`<tr><td>${s.username}</td><td>${s.role||""}</td><td>${riskPill(s.risk_level)} <span class="muted">${s.risk_score}</span></td>
+        <td>${s.device_fp}…</td><td>${s.ip_address||""}</td><td>${t19(s.created_at)}</td>
+        <td><button class="btn-block" onclick="revokeSession(${s.id})">⛔ Revoke</button></td></tr>`;
+    });
+    if(!sessions.filter(s=>s.active).length)h+="<tr><td colspan='7' style='text-align:center' class='muted'>No active sessions.</td></tr>";
+    h+="</table>";
+
+    // Risk decision feed
+    h+=`<h3 class="sech">Risk Decision Feed <span class="muted">— every scored access</span></h3>`;
+    h+=`<table><tr><th>Time</th><th>User</th><th>Phase</th><th>Resource</th><th>Score</th><th>Level</th><th>Decision</th><th>Reasons</th></tr>`;
+    events.slice(0,40).forEach(e=>{
+      h+=`<tr><td>${t19(e.timestamp)}</td><td>${e.username||""}</td><td>${e.phase||""}</td><td>${e.resource||""}</td>
+        <td>${e.score}</td><td>${riskPill(e.level)}</td><td>${decisionPill(e.decision)}</td>
+        <td class="muted" style="font-size:12px">${e.factors||""}</td></tr>`;
+    });
+    if(!events.length)h+="<tr><td colspan='8' style='text-align:center' class='muted'>No risk events yet.</td></tr>";
+    h+="</table>";
+
+    // Device trust
+    h+=`<h3 class="sech">Device Trust <span class="muted">— untrust to require step-up next time</span></h3>`;
+    h+=`<table><tr><th>User</th><th>Device</th><th>Fingerprint</th><th>Status</th><th>Last Seen</th><th style="width:150px">Action</th></tr>`;
+    devices.forEach(d=>{
+      const st=d.trusted?`<span class="pill pill-ok">Trusted</span>`:`<span class="pill pill-warn">Untrusted</span>`;
+      const act=d.trusted?`<button class="btn-block" onclick="untrustDevice(${d.id})">Untrust</button>`
+        :`<button class="btn-unblock" onclick="trustDevice(${d.id})">Trust</button>`;
+      h+=`<tr><td>${d.username}</td><td>${d.label||""}</td><td class="muted">${d.device_fp}…</td><td>${st}</td><td>${t19(d.last_seen)}</td><td>${act}</td></tr>`;
+    });
+    if(!devices.length)h+="<tr><td colspan='6' style='text-align:center' class='muted'>No devices recorded yet.</td></tr>";
+    setContent(h+"</table>");
+  }catch(e){setContent("Error: "+e.message);}
+}
+async function revokeSession(id){
+  if(!confirm("Revoke this session? The user will be signed out immediately."))return;
+  try{await api("/api/sessions/"+id+"/revoke",{method:"POST"});renderRisk();}catch(e){alert(e.message);}
+}
+async function trustDevice(id){try{await api("/api/devices/"+id+"/trust",{method:"POST"});renderRisk();}catch(e){alert(e.message);}}
+async function untrustDevice(id){try{await api("/api/devices/"+id+"/untrust",{method:"POST"});renderRisk();}catch(e){alert(e.message);}}
 
 /* ---- Users management (admin) ---- */
 async function renderUsers(){

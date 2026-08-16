@@ -13,13 +13,14 @@ Every attempt is written to login_history + access_logs for the dashboard.
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, decode_token
 
 from extensions import db
 from mailer import send_otp_email, send_reset_email, send_welcome_email
 from models import User, LoginHistory, ROLE_USER, ROLE_VIEWER
 from ratelimit import rate_limited
 from security import client_ip, record_access, resolve_ip
+import risk as risk_engine
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -164,10 +165,28 @@ def login():
     user.reset_failures()
     db.session.commit()
 
+    # --- Phase 2: Device Trust + Risk-Based Access Control -----------------
+    ip = resolve_ip(username)
+    device_id = risk_engine.read_device_id()
+    device_fp = risk_engine.device_fingerprint(username, device_id)
+    score, level, factors, known_device = risk_engine.score_login(user, ip, device_fp)
+    decision = risk_engine.decide("LOGIN", level)  # LOGIN always ALLOW (MFA passed)
+
+    # Passing full MFA trusts this device going forward.
+    risk_engine.register_device(username, device_fp, ip, trust=True)
+    db.session.commit()
+
     access_token = create_access_token(
         identity=user.username,
         additional_claims={"role": user.role, "email": user.email},
     )
+
+    # Record the session so it can be revoked later (continuous verification).
+    jti = decode_token(access_token)["jti"]
+    expires_at = datetime.utcnow() + cfg["JWT_ACCESS_TOKEN_EXPIRES"]
+    risk_engine.create_session(jti, user, device_fp, ip, score, level, expires_at)
+    risk_engine.log_risk_event(username, "LOGIN", "Authentication", ip, device_fp,
+                               score, level, decision, factors)
 
     _log_login(username, "SUCCESS")
     record_access(username, "LOGIN", "SYSTEM", "SUCCESS")
@@ -181,6 +200,12 @@ def login():
                 "expires_in_minutes": int(
                     cfg["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() // 60
                 ),
+                "risk": {
+                    "score": score,
+                    "level": level,
+                    "factors": factors,
+                    "known_device": known_device,
+                },
             }
         ),
         200,

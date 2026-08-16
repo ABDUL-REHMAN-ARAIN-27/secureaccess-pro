@@ -228,3 +228,83 @@ def test_export_csv_admin_only(client, totp_for):
 
     viewer = auth_header(token_for(client, totp_for, "viewer", "Viewer@123"))
     assert client.get("/api/export/access-logs", headers=viewer).status_code == 403
+
+
+# --------------------------------------------------------------------------- #
+# Phase 2 — Risk-Based Access Control, Device Trust, Continuous Verification
+# --------------------------------------------------------------------------- #
+def _login_dev(client, totp_for, username, password, device="dev-1"):
+    """Log in with a device id; return (token, headers-incl-device)."""
+    resp = client.post("/api/login", json={
+        "username": username, "password": password,
+        "tfa_code": totp_for(username), "device_id": device})
+    body = resp.get_json()
+    headers = {"Authorization": f"Bearer {body['token']}", "X-Device-Id": device}
+    return resp, headers
+
+
+def test_login_returns_risk_assessment(client, totp_for):
+    resp, _ = _login_dev(client, totp_for, "admin", "Admin@123")
+    risk = resp.get_json()["risk"]
+    assert risk["level"] in ("LOW", "MEDIUM", "HIGH")
+    assert isinstance(risk["score"], int)
+    assert risk["known_device"] is False  # brand-new device on first login
+
+
+def test_continuous_verify_revokes_session_when_user_blocked(client, totp_for):
+    # User logs in and can reach the HR portal.
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="user-dev")
+    assert client.get("/api/protected/hr", headers=uh).status_code == 200
+
+    # Admin blocks the user mid-session.
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="admin-dev")
+    assert client.post("/api/users/user/block", headers=ah).status_code == 200
+
+    # The user's still-valid token is now revoked by continuous verification.
+    revoked = client.get("/api/protected/hr", headers=uh)
+    assert revoked.status_code == 403
+    assert revoked.get_json()["session_revoked"] is True
+
+    # And the token is globally dead — even a non-sensitive route is refused.
+    assert client.get("/api/protected/documents", headers=uh).status_code == 401
+
+
+def test_admin_can_revoke_a_live_session(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="user-dev")
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="admin-dev")
+
+    sessions = client.get("/api/sessions", headers=ah).get_json()
+    user_session = next(s for s in sessions if s["username"] == "user")
+    assert client.post(f"/api/sessions/{user_session['id']}/revoke",
+                       headers=ah).status_code == 200
+
+    # The user's token no longer works.
+    assert client.get("/api/protected/documents", headers=uh).status_code == 401
+
+
+def test_untrust_device_forces_step_up(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="user-dev")
+    _, ah = _login_dev(client, totp_for, "admin", "Admin@123", device="admin-dev")
+
+    # Admin un-trusts the user's device.
+    devices = client.get("/api/devices", headers=ah).get_json()
+    dev = next(d for d in devices if d["username"] == "user")
+    assert client.post(f"/api/devices/{dev['id']}/untrust", headers=ah).status_code == 200
+
+    # The user's next sensitive access is scored MEDIUM -> step-up required.
+    resp = client.get("/api/protected/hr", headers=uh)
+    assert resp.status_code == 401
+    assert resp.get_json()["step_up_required"] is True
+
+
+def test_logout_revokes_own_session(client, totp_for):
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="user-dev")
+    assert client.post("/api/logout", headers=uh).status_code == 200
+    # Token is dead after logout (real revocation on a stateless JWT).
+    assert client.get("/api/protected/documents", headers=uh).status_code == 401
+
+
+def test_risk_endpoints_are_admin_only(client, totp_for):
+    viewer = auth_header(token_for(client, totp_for, "viewer", "Viewer@123"))
+    for path in ("/api/risk-events", "/api/sessions", "/api/risk-metrics", "/api/devices"):
+        assert client.get(path, headers=viewer).status_code == 403
