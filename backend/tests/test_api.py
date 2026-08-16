@@ -384,8 +384,23 @@ def test_upload_rejects_path_traversal_name(client, totp_for):
     assert r.status_code == 400
 
 
-def test_upload_rejects_disallowed_content(client, totp_for):
-    # A PE/EXE header is not in the MIME allow-list (extension is never trusted).
+def test_all_formats_accepted_and_executable_caught_by_scanner(client, totp_for):
+    # Default policy accepts every format; an executable is not rejected at the
+    # door but is caught by the scanner and quarantined (scan-based, not by type).
+    _, uh = _login_dev(client, totp_for, "user", "User@123")
+    r = _upload(client, uh, b"MZ\x90\x00 program bytes", "tool.exe")
+    assert r.status_code == 201
+    body = r.get_json()
+    assert body["blocked"] is True
+    assert body["file"]["scan_status"] == "MALICIOUS"
+    # A harmless PDF of any type is accepted and scanned clean.
+    r2 = _upload(client, uh, b"%PDF-1.4 harmless content", "doc.pdf")
+    assert r2.status_code == 201 and r2.get_json()["file"]["scan_status"] == "CLEAN"
+
+
+def test_restrict_mode_rejects_disallowed_type(client, totp_for, app):
+    # With the allow-list enabled, a disallowed content type is rejected up front.
+    app.config["UPLOAD_ALLOW_ALL_TYPES"] = False
     _, uh = _login_dev(client, totp_for, "user", "User@123")
     r = _upload(client, uh, b"MZ\x90\x00 program bytes", "tool.bin")
     assert r.status_code == 400

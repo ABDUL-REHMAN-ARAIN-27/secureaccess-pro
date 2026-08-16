@@ -75,7 +75,7 @@ Auth + MFA -> RBAC + Continuous Verify -> Upload -> Validate -> SHA-256
 | Control | Implementation |
 |---|---|
 | **Upload guard** | `@roles_required(Admin, User)` **+** `@continuous_verify` — a blocked/high-risk session cannot upload even with a valid token; Viewers cannot upload. |
-| **Validation** | Size cap (streamed), safe-filename + path-traversal rejection, **content-sniffed MIME allow-list** (extension never trusted), random server-side names. |
+| **Validation** | Size cap (streamed), safe-filename + path-traversal rejection, random server-side names. **Every file type is accepted by default and left to the scanner** (`UPLOAD_ALLOW_ALL_TYPES=true`); set it `false` to restrict to a content-sniffed MIME allow-list (extension never trusted). |
 | **Scanning** | Pluggable engine (`scanner.py`): **demo** = EICAR + structural heuristics (no deps); **clamav** = real signatures via the `clamd` daemon. Failures fail *closed* (SCAN_ERROR ⇒ quarantine). |
 | **Quarantine** | Unsafe files moved to a private `backend/var/quarantine` dir (outside web root, non-executable, never served to users). |
 | **Hashing** | SHA-256 per file for identification, audit and duplicate detection. |

@@ -639,7 +639,7 @@ async function uploadFile(){
 
 async function renderFiles(){
   let h=`<h2>Secure File Upload</h2>`;
-  h+=`<p class="subtitle">Every upload is scanned before it becomes available. Malicious files are quarantined automatically and the administrator is alerted.</p>`;
+  h+=`<p class="subtitle">Any file type can be uploaded — every file is scanned before it becomes available. Malicious files are quarantined automatically and the administrator is alerted.</p>`;
   h+=`<div class="panel-narrow"><div class="upbox">
       <input type="file" id="fu-input">
       <button class="btn-sm" style="background:#27ae60" onclick="uploadFile()">Upload &amp; Scan</button>

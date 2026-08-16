@@ -137,9 +137,11 @@ def process_upload(file_storage, username, ip, device_fp):
         record_access(username, "FILE_ACCESS_DENIED", original, "DENIED")
         raise
 
-    # 2) Content-sniffed MIME allow-list (never trust the extension).
+    # 2) Determine the real content type (never trust the extension). By default
+    # every format is accepted and left to the scanner; if the allow-list mode is
+    # enabled, reject types outside it before scanning.
     mime = _sniff_mime(tmp_path, original)
-    if mime not in cfg["UPLOAD_ALLOWED_MIME"]:
+    if not cfg.get("UPLOAD_ALLOW_ALL_TYPES", True) and mime not in cfg["UPLOAD_ALLOWED_MIME"]:
         os.remove(tmp_path)
         record_access(username, "FILE_ACCESS_DENIED", f"{original} ({mime})", "DENIED")
         raise UploadError(f"File type '{mime}' is not allowed.")

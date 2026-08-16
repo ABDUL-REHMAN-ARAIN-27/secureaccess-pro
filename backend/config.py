@@ -115,7 +115,11 @@ class Config:
     MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
     MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 
-    # MIME allow-list (content is sniffed; the extension alone is never trusted).
+    # File-type policy. By default we accept EVERY format and rely on the scanner
+    # + quarantine (Zero Trust: trust no file, scan it). Set UPLOAD_ALLOW_ALL_TYPES
+    # =false to instead restrict uploads to the MIME allow-list below (content is
+    # sniffed; the extension alone is never trusted).
+    UPLOAD_ALLOW_ALL_TYPES = os.environ.get("UPLOAD_ALLOW_ALL_TYPES", "true").lower() == "true"
     UPLOAD_ALLOWED_MIME = [
         m.strip() for m in os.environ.get(
             "UPLOAD_ALLOWED_MIME",
