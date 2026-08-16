@@ -43,6 +43,10 @@ class User(db.Model):
     email_otp_hash = db.Column(db.String(255), nullable=True)
     email_otp_expires = db.Column(db.DateTime, nullable=True)
 
+    # Password-reset code (emailed on 'forgot password').
+    reset_hash = db.Column(db.String(255), nullable=True)
+    reset_expires = db.Column(db.DateTime, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # ------------------------------------------------------------------ #
@@ -113,6 +117,27 @@ class User(db.Model):
     def clear_email_otp(self) -> None:
         self.email_otp_hash = None
         self.email_otp_expires = None
+
+    # ------------------------------------------------------------------ #
+    # Password-reset code helpers
+    # ------------------------------------------------------------------ #
+    def set_reset_code(self, code: str, minutes: int = 15) -> None:
+        self.reset_hash = bcrypt.hashpw(code.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        self.reset_expires = datetime.utcnow() + timedelta(minutes=minutes)
+
+    def verify_reset_code(self, code: str) -> bool:
+        if not self.reset_hash or not self.reset_expires:
+            return False
+        if self.reset_expires < datetime.utcnow():
+            return False
+        try:
+            return bcrypt.checkpw(str(code).strip().encode("utf-8"), self.reset_hash.encode("utf-8"))
+        except (ValueError, AttributeError):
+            return False
+
+    def clear_reset_code(self) -> None:
+        self.reset_hash = None
+        self.reset_expires = None
 
     # ------------------------------------------------------------------ #
     # Lockout helpers

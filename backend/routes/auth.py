@@ -16,7 +16,7 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token
 
 from extensions import db
-from mailer import send_otp_email
+from mailer import send_otp_email, send_reset_email, send_welcome_email
 from models import User, LoginHistory, ROLE_USER, ROLE_VIEWER
 from ratelimit import rate_limited
 from security import client_ip, record_access, resolve_ip
@@ -229,11 +229,17 @@ def register():
 
     record_access(username, "REGISTER", "SYSTEM", "SUCCESS")
 
+    # Professional welcome email to the new account's registered address.
+    try:
+        send_welcome_email(email, username, chosen_role)
+    except Exception:
+        pass
+
     return (
         jsonify(
             {
-                "message": "Registration successful. Enrol the secret below in your "
-                "authenticator app, then log in.",
+                "message": "Registration successful — a welcome email has been sent. "
+                "You can now log in.",
                 "username": username,
                 "role": chosen_role,
                 "totp_secret": user.totp_secret,
@@ -245,3 +251,55 @@ def register():
         ),
         201,
     )
+
+
+@auth_bp.route("/api/forgot-password", methods=["POST"])
+@rate_limited("otp")
+def forgot_password():
+    """Email a password-reset code to the account's registered address."""
+    data = request.get_json(silent=True) or {}
+    ident = (data.get("username") or data.get("email") or "").strip()
+    user = User.query.filter(
+        (User.username == ident) | (User.email == ident)
+    ).first()
+
+    resp = {"message": "If the account exists, a reset code has been sent to its email."}
+    if user and not user.is_blocked:
+        code = User.generate_otp(current_app.config["OTP_LENGTH"])
+        user.set_reset_code(code, current_app.config["RESET_EXPIRES_MINUTES"])
+        db.session.commit()
+        _delivered, dev_code = send_reset_email(user.email, code)
+        record_access(user.username, "PASSWORD_RESET_REQUEST", user.email or "", "SENT")
+        if dev_code is not None:
+            resp["dev_code"] = dev_code
+            resp["message"] += " (DEV MODE: code shown for testing)"
+    return jsonify(resp), 200
+
+
+@auth_bp.route("/api/reset-password", methods=["POST"])
+@rate_limited("otp")
+def reset_password():
+    """Verify the emailed reset code and set a new password."""
+    data = request.get_json(silent=True) or {}
+    ident = (data.get("username") or data.get("email") or "").strip()
+    code = data.get("code") or ""
+    new_password = data.get("password") or ""
+    confirm = data.get("confirm_password", new_password)
+
+    user = User.query.filter(
+        (User.username == ident) | (User.email == ident)
+    ).first()
+    if not user or not user.verify_reset_code(code):
+        return jsonify({"error": "Invalid or expired reset code"}), 400
+    if new_password != confirm:
+        return jsonify({"error": "Passwords do not match"}), 400
+    policy_error = password_policy_error(new_password, current_app.config["PASSWORD_MIN_LENGTH"])
+    if policy_error:
+        return jsonify({"error": policy_error}), 400
+
+    user.set_password(new_password)
+    user.clear_reset_code()
+    user.reset_failures()
+    db.session.commit()
+    record_access(user.username, "PASSWORD_RESET", "SYSTEM", "SUCCESS")
+    return jsonify({"message": "Password reset successful. You can now log in."}), 200

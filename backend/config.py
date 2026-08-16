@@ -51,6 +51,7 @@ class Config:
     # --- Email OTP (second factor delivered to the user's registered email) ---
     OTP_LENGTH = int(os.environ.get("OTP_LENGTH", "6"))
     OTP_EXPIRES_MINUTES = int(os.environ.get("OTP_EXPIRES_MINUTES", "5"))
+    RESET_EXPIRES_MINUTES = int(os.environ.get("RESET_EXPIRES_MINUTES", "15"))
     # SMTP settings (Gmail: host smtp.gmail.com, port 587, an App Password).
     # Leave SMTP_USER/SMTP_PASSWORD empty to run in dev mode: the code is
     # printed to the server console instead of being emailed.

@@ -105,7 +105,26 @@
       <button class="btn-green" onclick="login()">LOGIN</button>
       <button class="btn-blue" onclick="showRegister()">CREATE ACCOUNT</button>
     </div>
+    <div style="text-align:center;margin-top:12px"><button class="btn-link" onclick="showForgot()">Forgot password?</button></div>
     <div id="li-msg" class="authmsg"></div>
+  </div>
+</div>
+
+<!-- ================= FORGOT PASSWORD ================= -->
+<div id="view-forgot" class="authwrap hidden">
+  <div class="brand">🔒 SecureAccess Pro</div>
+  <div class="tagline">Reset your password</div>
+  <div class="authcard">
+    <div class="frow"><label>Username or Email:</label><input id="fp-user"></div>
+    <div class="otp-link"><button class="btn-link" onclick="sendReset()">✉ Send reset code</button></div>
+    <div class="frow"><label>Reset Code:</label><input id="fp-code" inputmode="numeric" placeholder="6-digit code"></div>
+    <div class="frow"><label>New Password:</label><input id="fp-pass" type="password"></div>
+    <div class="frow"><label>Confirm:</label><input id="fp-conf" type="password"></div>
+    <div class="authbtns">
+      <button class="btn-green" onclick="doReset()">RESET PASSWORD</button>
+      <button class="btn-blue" onclick="showLogin()">BACK TO LOGIN</button>
+    </div>
+    <div id="fp-msg" class="authmsg"></div>
   </div>
 </div>
 
@@ -151,9 +170,9 @@ let token=null, role=null, username=null, email=null;
 let monitorTimer=null;
 
 /* ---------- helpers ---------- */
-function show(v){for(const id of["login","register","app"])document.getElementById("view-"+id).classList.add("hidden");
+function show(v){for(const id of["login","register","forgot","app"])document.getElementById("view-"+id).classList.add("hidden");
   document.getElementById("view-"+v).classList.remove("hidden");}
-function showLogin(){show("login");} function showRegister(){show("register");}
+function showLogin(){show("login");} function showRegister(){show("register");} function showForgot(){show("forgot");}
 function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.className="authmsg "+(ok?"ok":"err");}
 function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
@@ -189,6 +208,20 @@ async function register(){
   }catch(e){amsg("rg-msg",e.message,false);}
 }
 function logout(){stopMonitor();token=role=username=null;document.getElementById("li-otp").value="";show("login");}
+
+async function sendReset(){
+  const u=val("fp-user");
+  if(!u)return amsg("fp-msg","Enter your username or email first.",false);
+  try{const d=await api("/api/forgot-password",{method:"POST",body:JSON.stringify({username:u})});
+    if(d.dev_code)document.getElementById("fp-code").value=d.dev_code;
+    amsg("fp-msg",d.message,true);}catch(e){amsg("fp-msg",e.message,false);}
+}
+async function doReset(){
+  try{const d=await api("/api/reset-password",{method:"POST",body:JSON.stringify({
+    username:val("fp-user"),code:val("fp-code"),password:val("fp-pass"),confirm_password:val("fp-conf")})});
+    amsg("fp-msg",d.message,true); setTimeout(showLogin,2500);
+  }catch(e){amsg("fp-msg",e.message,false);}
+}
 
 /* ---------- dashboard ---------- */
 const APPS=[
