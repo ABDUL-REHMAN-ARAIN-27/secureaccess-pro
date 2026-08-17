@@ -191,7 +191,7 @@ def login():
     # UEBA learns this successful login into the user's behaviour baseline.
     try:
         import ueba
-        ueba.observe_login(username, ip, device_fp)
+        ueba.observe_login(username, ip, device_fp, level)  # anti-poisoning: skips flagged logins
     except Exception:
         pass
 

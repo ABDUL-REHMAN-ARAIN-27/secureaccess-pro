@@ -14,6 +14,7 @@ from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
 import mitre
+import explainer
 from audit import verify_chain
 from extensions import db
 from models import (
@@ -184,6 +185,11 @@ def _build_alerts():
 
     order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     alerts.sort(key=lambda a: order.get(a["severity"], 3))
+
+    # Module 5C — attach a plain-language explanation + recommended action.
+    for a in alerts:
+        a["recommended_action"] = explainer.recommended_action(a["type"])
+        a["explanation"] = explainer.explain_alert(a)
     return alerts
 
 
@@ -193,6 +199,19 @@ def get_alerts():
     alerts = _build_alerts()
     return jsonify({"count": len(alerts), "alerts": alerts,
                     "generated_at": datetime.utcnow().isoformat()})
+
+
+@admin_bp.route("/api/ai/narrative", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def ai_narrative():
+    """Module 5C — a generated analyst-style incident summary of current alerts."""
+    now = datetime.utcnow()
+    alerts = _build_alerts()
+    return jsonify({
+        "narrative": explainer.narrative(alerts, now),
+        "alert_count": len(alerts),
+        "generated_at": now.isoformat(),
+    })
 
 
 @admin_bp.route("/api/mitre-coverage", methods=["GET"])

@@ -32,6 +32,7 @@ _TRACK_SKIP = {
     "admin.get_metrics",
     "admin.get_alerts",
     "admin.mitre_coverage",
+    "admin.ai_narrative",
     "admin.verify_audit",
     "zerotrust.list_risk_events",
     "zerotrust.list_sessions",

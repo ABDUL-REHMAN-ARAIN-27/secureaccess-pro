@@ -107,6 +107,10 @@
   .rk-mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#8a97a0}
   .mitre{color:#8e44ad;font-weight:700;text-decoration:none}
   .mitre:hover{text-decoration:underline}
+  .analyst{max-width:1000px;margin:6px auto 16px;background:#f4f8fb;border:1px solid #d6e2ec;
+    border-left:4px solid #2980b9;border-radius:8px;padding:12px 16px}
+  .analyst-h{font-size:12px;font-weight:700;color:#2980b9;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  .analyst-b{font-size:13.5px;color:#34495e;line-height:1.55}
   .rk-legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0 2px;font-size:11px;color:#7f8c8d}
   .rk-legend b{font-weight:600;color:#7f8c8d;margin-right:2px}
   .rk-legend span{padding:3px 9px;border-radius:5px;font-weight:700}
@@ -444,9 +448,11 @@ async function renderLogFeed(k){
 }
 
 async function renderSecurity(){
-  try{const [m,al,au,mit]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),api("/api/mitre-coverage")]);
+  try{const [m,al,au,mit,ai]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),api("/api/mitre-coverage"),api("/api/ai/narrative")]);
     let h=`<h2>Security Alerts &amp; Monitoring</h2><div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
     h+=`<div style="text-align:center"><div class="badge ${au.intact?"ok":"bad"}">Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING DETECTED at entry #"+au.broken_at}</div></div>`;
+    // Module 5C — AI Analyst plain-language incident summary
+    h+=`<div class="analyst"><div class="analyst-h">AI Analyst Summary</div><div class="analyst-b">${ai.narrative||""}</div></div>`;
     h+=`<div class="kpis" style="justify-content:center">
       <div class="kpi"><b>${m.total_users}</b><span>Users</span></div>
       <div class="kpi"><b>${m.total_logins}</b><span>Logins</span></div>

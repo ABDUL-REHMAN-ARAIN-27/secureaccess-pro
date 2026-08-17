@@ -195,6 +195,24 @@ def test_alerts_are_mapped_to_mitre_attack(client, totp_for):
     assert client.get("/api/mitre-coverage", headers=non_admin).status_code == 403
 
 
+def test_ai_analyst_narrative(client, totp_for):
+    # Trigger a brute-force detection, then the AI Analyst must summarise it.
+    for _ in range(3):
+        client.post("/api/login",
+                    json={"username": "victimx", "password": "WRONG", "tfa_code": "0"})
+    for _ in range(3):
+        client.post("/api/login",
+                    json={"username": "viewer", "password": "WRONG", "tfa_code": "0"})
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    body = client.get("/api/ai/narrative", headers=admin).get_json()
+    assert "Security summary" in body["narrative"]
+    assert "MITRE ATT&CK technique" in body["narrative"]
+    assert "Recommended" in body["narrative"] or "recommended" in body["narrative"]
+    # Admin-only.
+    user = auth_header(token_for(client, totp_for, "user", "User@123"))
+    assert client.get("/api/ai/narrative", headers=user).status_code == 403
+
+
 # --------------------------------------------------------------------------- #
 # Password policy + rate limiting
 # --------------------------------------------------------------------------- #

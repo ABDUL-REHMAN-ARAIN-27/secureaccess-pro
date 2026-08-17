@@ -132,6 +132,26 @@ New file `mitre.py`; the Security Alerts tab shows an **ATT&CK column** per aler
 (linked to attack.mitre.org) plus a **MITRE ATT&CK Coverage** panel
 (`GET /api/mitre-coverage`) aggregating observed techniques by tactic and count.
 
+### Phase 6 — AI Analyst: natural-language explanation engine (explainability)
+
+Closes the **explainability** gap: instead of an opaque number, every detection
+is rendered as auditable English, and the whole alert set is summarised into an
+analyst-style incident narrative.
+
+- `explainer.py`: a **deterministic, template-based** (Tier-1) engine — always
+  available, fully reproducible. It ranks each detection, attaches a plain
+  explanation + a **recommended action**, and generates a session incident
+  narrative (`GET /api/ai/narrative`). It **never makes a decision** — it only
+  *describes* decisions already taken by the deterministic risk/policy engine,
+  keeping the security-critical path auditable and immune to model error /
+  prompt injection. (An optional local-LLM Tier-2 can layer on top; not required.)
+- The Security Alerts tab shows an **"AI Analyst Summary"** box above the alerts.
+- **Anti-poisoning** (UEBA): the behaviour baseline is now trained only from
+  allowed, *unflagged* logins — a login scored High/Critical is recorded but not
+  learned, so an attacker cannot slowly train the model to accept abnormal use.
+
+New file `explainer.py`; new endpoint `GET /api/ai/narrative`.
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |

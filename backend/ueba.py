@@ -113,11 +113,18 @@ def _iforest_score(profile, now):
 # --------------------------------------------------------------------------- #
 # Learning (write) — record a successful login into the baseline
 # --------------------------------------------------------------------------- #
-def observe_login(username, ip, device_fp):
-    """Update the user's behaviour baseline with this successful login."""
+def observe_login(username, ip, device_fp, level="None"):
+    """Update the user's behaviour baseline with this successful login.
+
+    Anti-poisoning (module plan §3): the baseline is only trained from allowed,
+    *unflagged* logins. A login the risk engine scored High/Critical is recorded
+    as a sighting but NOT folded into the learned baseline, so an attacker cannot
+    slowly train the model to accept abnormal behaviour."""
     cfg = current_app.config
     if not cfg.get("UEBA_ENABLED", True):
         return
+    if level in ("High", "Critical"):
+        return  # do not learn from a flagged login
     now = datetime.utcnow()
     p = _profile(username)
     if not p:
