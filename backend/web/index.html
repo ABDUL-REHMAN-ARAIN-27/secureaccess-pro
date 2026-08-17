@@ -6,66 +6,87 @@
 <title>SecureAccess Pro - Zero Trust Network Access</title>
 <style>
   :root{
-    --navy:#2c3e50; --navy2:#34495e; --headbar:#2c3e50; --light:#ecf0f1; --white:#fff;
-    --green:#27ae60; --greenh:#219150; --blue:#3498db; --blueh:#2b83bf; --red:#e74c3c;
-    --text:#2c3e50; --muted:#7f8c8d; --border:#dfe4e8; --ok:#27ae60; --bad:#e74c3c; --warn:#e67e22;
+    --navy:#1f2d3d; --navy2:#26374a; --headbar:#1f2d3d; --light:#eef1f5; --white:#fff;
+    --green:#1e8e57; --greenh:#18784a; --blue:#2f6fed; --blueh:#2560d0; --red:#d64541;
+    --text:#1f2d3d; --muted:#6b7a89; --border:#e2e7ec; --ok:#1e8e57; --bad:#d64541; --warn:#dd8a0b;
+    --ring:rgba(47,111,237,.16);
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--light);color:var(--text)}
+  body{margin:0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--light);color:var(--text);-webkit-font-smoothing:antialiased}
   .hidden{display:none !important}
-  button{cursor:pointer;border:none;font-weight:bold;border-radius:3px}
+  button{cursor:pointer;border:none;font-weight:600;border-radius:6px;font-family:inherit;
+    transition:background .15s ease,box-shadow .15s ease,opacity .15s ease}
 
-  /* ---------- Login / Register (navy) ---------- */
-  .authwrap{min-height:100vh;background:var(--navy);display:flex;flex-direction:column;
-    align-items:center;justify-content:center;padding:20px}
-  .brand{color:#fff;font-size:30px;font-weight:bold;margin:0}
-  .tagline{color:#aeb6bd;font-size:14px;margin:6px 0 22px}
-  .authcard{background:var(--navy2);border-radius:8px;padding:30px 32px;width:100%;max-width:410px;
-    box-shadow:0 10px 34px rgba(0,0,0,.28)}
-  .frow{margin-bottom:14px}
-  .frow label{display:block;color:#cfd6dc;font-size:13px;margin-bottom:5px}
-  .frow input,.frow select{padding:11px;border:1px solid #46617a;border-radius:5px;font-size:14px;width:100%;
-    background:#fff;color:#2c3e50}
-  .frow input:focus,.frow select:focus{outline:none;border-color:#5dade2}
-  .otp-link{text-align:right;margin:-6px 0 4px}
-  .btn-link{background:none;color:#5dade2;text-decoration:none;font-weight:600;font-size:13px;padding:2px}
+  /* ---------- Authentication ---------- */
+  .authwrap{min-height:100vh;background:linear-gradient(155deg,#1c2a3a 0%,#25384c 55%,#2b4258 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+  .brand-lockup{display:flex;align-items:center;gap:13px;margin-bottom:20px}
+  .brand-mark{width:46px;height:46px;border-radius:12px;background:var(--green);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;letter-spacing:.5px;
+    box-shadow:0 6px 16px rgba(30,142,87,.38)}
+  .brand{color:#fff;font-size:21px;font-weight:700;margin:0;letter-spacing:.2px}
+  .tagline{color:#9fb0c0;font-size:12.5px;margin:2px 0 0;letter-spacing:.2px}
+  .authcard{background:#fff;border-radius:12px;padding:26px 30px 24px;width:100%;max-width:412px;
+    box-shadow:0 20px 54px rgba(0,0,0,.32);border-top:3px solid var(--green)}
+  .authcard h1{font-size:18px;color:var(--navy);margin:0 0 3px;font-weight:700}
+  .authcard .lead{font-size:13px;color:var(--muted);margin:0 0 20px}
+  .frow{margin-bottom:15px}
+  .frow label{display:block;color:#3d4d5e;font-size:12.5px;font-weight:600;margin-bottom:6px}
+  .frow input,.frow select{padding:11px 12px;border:1px solid #d4dbe2;border-radius:7px;font-size:14px;width:100%;
+    background:#fff;color:var(--text);font-family:inherit;transition:border-color .15s,box-shadow .15s}
+  .frow input:focus,.frow select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px var(--ring)}
+  .frow input::placeholder{color:#aab4bd}
+  .otp-link{text-align:right;margin:-8px 0 6px}
+  .btn-link{background:none;color:var(--blue);text-decoration:none;font-weight:600;font-size:13px;padding:2px}
   .btn-link:hover{text-decoration:underline}
-  .authbtns{display:flex;gap:10px;margin-top:18px}
+  .authbtns{display:flex;gap:10px;margin-top:20px}
   .btn-green{background:var(--green);color:#fff;padding:12px;font-size:14px;flex:1}
   .btn-green:hover{background:var(--greenh)}
-  .btn-blue{background:var(--blue);color:#fff;padding:12px;font-size:14px;flex:1}
-  .btn-blue:hover{background:var(--blueh)}
-  .authmsg{margin-top:14px;padding:10px 12px;border-radius:5px;font-size:13px;display:none;text-align:center;line-height:1.4}
-  .authmsg.err{background:rgba(231,76,60,.18);color:#f5b7b1;border:1px solid rgba(231,76,60,.5);display:block}
-  .authmsg.ok{background:rgba(39,174,96,.18);color:#abebc6;border:1px solid rgba(39,174,96,.5);display:block}
+  .btn-blue{background:#fff;color:var(--blue);border:1px solid #cdd7e2;padding:12px;font-size:14px;flex:1}
+  .btn-blue:hover{background:#f3f7ff}
+  .authmsg{margin-top:16px;padding:11px 13px;border-radius:7px;font-size:13px;display:none;text-align:center;line-height:1.45}
+  .authmsg.err{background:#fdeceb;color:#b23b37;border:1px solid #f3c6c3;display:block}
+  .authmsg.ok{background:#e9f7ef;color:#1a744a;border:1px solid #c2e7d3;display:block}
+  .auth-foot{color:#8494a3;font-size:11.5px;margin-top:20px;text-align:center;letter-spacing:.2px}
 
   /* ---------- Dashboard ---------- */
   .header{background:var(--headbar);color:#fff;display:flex;justify-content:space-between;
-    align-items:center;padding:16px 26px}
-  .header .h-title{font-size:22px;font-weight:bold}
+    align-items:center;padding:13px 26px}
+  .header .h-left{display:flex;align-items:center;gap:11px}
+  .header .hmark{width:32px;height:32px;border-radius:8px;background:var(--green);display:flex;
+    align-items:center;justify-content:center;font-weight:800;font-size:12.5px;color:#fff;letter-spacing:.5px}
+  .header .h-title{font-size:18px;font-weight:700;letter-spacing:.2px}
   .header .h-right{text-align:right}
-  .header .h-user{color:#5dade2;font-size:15px}
-  .header .h-clock{color:#aeb6bd;font-size:12.5px;margin-bottom:2px}
-  .header .h-clock b{color:#eafaf1;font-weight:600}
-  .tabs{display:flex;background:var(--light);border-bottom:1px solid #cfd6db;padding:0 16px;flex-wrap:wrap}
-  .tab{padding:10px 18px;font-size:14px;color:#566573;cursor:pointer;border:1px solid transparent;border-bottom:none}
-  .tab.active{background:#fff;color:var(--navy);font-weight:bold;border-color:#cfd6db;border-radius:4px 4px 0 0}
-  .content{background:#fff;margin:0 16px 16px;min-height:60vh;padding:24px;border:1px solid #cfd6db;border-top:none}
-  .content h2{text-align:center;color:var(--navy);margin:6px 0 24px}
-  .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
-  .appcard{background:#fff;border:1px solid var(--border);border-radius:5px;padding:22px;width:230px;
-    box-shadow:0 1px 4px rgba(0,0,0,.06);text-align:center}
+  .header .h-user{color:#8fbdff;font-size:13.5px;font-weight:600}
+  .header .h-clock{color:#9fb0c0;font-size:12px;margin-bottom:2px}
+  .header .h-clock b{color:#e3ebf2;font-weight:600}
+  .tabs{display:flex;background:#fff;border-bottom:1px solid #e2e7ec;padding:0 18px;flex-wrap:wrap;
+    box-shadow:0 1px 3px rgba(20,40,60,.04)}
+  .tab{padding:13px 16px;font-size:13.5px;color:#6b7a89;cursor:pointer;border-bottom:2px solid transparent;
+    font-weight:600;transition:color .15s,border-color .15s}
+  .tab:hover{color:var(--navy)}
+  .tab.active{color:var(--navy);border-bottom-color:var(--green)}
+  .content{background:#fff;margin:18px;min-height:60vh;padding:26px 28px;border:1px solid #e5e9ee;
+    border-radius:10px;box-shadow:0 1px 4px rgba(20,40,60,.05)}
+  .content h2{text-align:center;color:var(--navy);margin:4px 0 22px;font-size:21px;font-weight:700}
+  .cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+  .appcard{background:#fff;border:1px solid var(--border);border-radius:10px;padding:24px 22px;width:232px;
+    box-shadow:0 1px 4px rgba(20,40,60,.05);text-align:center;transition:box-shadow .15s,transform .15s}
+  .appcard:hover{box-shadow:0 8px 22px rgba(20,40,60,.10);transform:translateY(-2px)}
   .appcard .ico{font-size:26px}
-  .appcard h3{color:var(--navy);margin:8px 0 6px}
-  .appcard p{color:var(--muted);font-size:13px;min-height:34px;margin:0 0 14px}
-  .btn-access{background:var(--green);color:#fff;padding:8px 22px}
+  .appcard h3{color:var(--navy);margin:0 0 8px;font-size:16px}
+  .appcard p{color:var(--muted);font-size:13px;min-height:34px;margin:0 0 16px;line-height:1.5}
+  .btn-access{background:var(--green);color:#fff;padding:9px 24px}
   .btn-access:hover{background:var(--greenh)}
-  .footer{text-align:center;padding:16px}
-  .btn-logout{background:var(--red);color:#fff;padding:9px 30px}
+  .footer{text-align:center;padding:8px 16px 24px}
+  .btn-logout{background:var(--red);color:#fff;padding:10px 30px}
+  .btn-logout:hover{background:#c23c38}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eee}
-  th{background:var(--navy);color:#fff}
-  tr:nth-child(even) td{background:#f7f9fa}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid #eef1f4}
+  th{background:var(--navy);color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  tr:nth-child(even) td{background:#fafbfc}
+  tbody tr:hover td, table tr:hover td{background:#f2f7fc}
   .st-ok{color:var(--ok);font-weight:bold}.st-bad{color:var(--bad);font-weight:bold}.st-warn{color:var(--warn);font-weight:bold}
   .pill{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold}
   .pill-ok{background:#d5f5e3;color:#1e8449}.pill-bad{background:#fadbd8;color:#c0392b}
@@ -136,67 +157,82 @@
 
 <!-- ================= LOGIN ================= -->
 <div id="view-login" class="authwrap">
-  <div class="brand">SecureAccess Pro</div>
-  <div class="tagline">Zero Trust Network Access Control System</div>
+  <div class="brand-lockup">
+    <div class="brand-mark">SA</div>
+    <div><div class="brand">SecureAccess Pro</div><div class="tagline">Zero Trust Network Access Control</div></div>
+  </div>
   <div class="authcard">
-    <div class="frow"><label>Username:</label><input id="li-user" autocomplete="username"></div>
-    <div class="frow"><label>Password:</label><input id="li-pass" type="password" autocomplete="current-password"></div>
-    <div class="frow"><label>2FA Code:</label><input id="li-otp" inputmode="numeric" placeholder="6-digit code"></div>
+    <h1>Sign in</h1>
+    <div class="lead">Enter your credentials to access the console.</div>
+    <div class="frow"><label>Username</label><input id="li-user" autocomplete="username"></div>
+    <div class="frow"><label>Password</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+    <div class="frow"><label>Verification code (2FA)</label><input id="li-otp" inputmode="numeric" placeholder="6-digit code"></div>
     <div class="otp-link"><button class="btn-link" onclick="requestOtp()">Send OTP</button></div>
     <div class="authbtns">
-      <button class="btn-green" onclick="login()">LOGIN</button>
-      <button class="btn-blue" onclick="showRegister()">CREATE ACCOUNT</button>
+      <button class="btn-green" onclick="login()">Sign In</button>
+      <button class="btn-blue" onclick="showRegister()">Create Account</button>
     </div>
-    <div style="text-align:center;margin-top:12px"><button class="btn-link" onclick="showForgot()">Forgot password?</button></div>
+    <div style="text-align:center;margin-top:14px"><button class="btn-link" onclick="showForgot()">Forgot your password?</button></div>
     <div id="li-msg" class="authmsg"></div>
   </div>
+  <div class="auth-foot">&copy; 2026 SecureAccess Pro &middot; Department of Cyber Security, MUET</div>
 </div>
 
 <!-- ================= FORGOT PASSWORD ================= -->
 <div id="view-forgot" class="authwrap hidden">
-  <div class="brand">SecureAccess Pro</div>
-  <div class="tagline">Reset your password</div>
+  <div class="brand-lockup">
+    <div class="brand-mark">SA</div>
+    <div><div class="brand">SecureAccess Pro</div><div class="tagline">Account recovery</div></div>
+  </div>
   <div class="authcard">
-    <div class="frow"><label>Username or Email:</label><input id="fp-user"></div>
+    <h1>Reset password</h1>
+    <div class="lead">We will email a reset code to your registered address.</div>
+    <div class="frow"><label>Username or email</label><input id="fp-user"></div>
     <div class="otp-link"><button class="btn-link" onclick="sendReset()">Send reset code</button></div>
-    <div class="frow"><label>Reset Code:</label><input id="fp-code" inputmode="numeric" placeholder="6-digit code"></div>
-    <div class="frow"><label>New Password:</label><input id="fp-pass" type="password"></div>
-    <div class="frow"><label>Confirm:</label><input id="fp-conf" type="password"></div>
+    <div class="frow"><label>Reset code</label><input id="fp-code" inputmode="numeric" placeholder="6-digit code"></div>
+    <div class="frow"><label>New password</label><input id="fp-pass" type="password"></div>
+    <div class="frow"><label>Confirm password</label><input id="fp-conf" type="password"></div>
     <div class="authbtns">
-      <button class="btn-green" onclick="doReset()">RESET PASSWORD</button>
-      <button class="btn-blue" onclick="showLogin()">BACK TO LOGIN</button>
+      <button class="btn-green" onclick="doReset()">Reset Password</button>
+      <button class="btn-blue" onclick="showLogin()">Back to Sign In</button>
     </div>
     <div id="fp-msg" class="authmsg"></div>
   </div>
+  <div class="auth-foot">&copy; 2026 SecureAccess Pro &middot; Department of Cyber Security, MUET</div>
 </div>
 
 <!-- ================= REGISTER ================= -->
 <div id="view-register" class="authwrap hidden">
-  <div class="brand">SecureAccess Pro</div>
-  <div class="tagline">Create a new account</div>
+  <div class="brand-lockup">
+    <div class="brand-mark">SA</div>
+    <div><div class="brand">SecureAccess Pro</div><div class="tagline">Create a new account</div></div>
+  </div>
   <div class="authcard">
-    <div class="frow"><label>Username:</label><input id="rg-user"></div>
-    <div class="frow"><label>Email:</label><input id="rg-email" type="email"></div>
-    <div class="frow"><label>Password:</label><input id="rg-pass" type="password"></div>
-    <div class="frow"><label>Confirm:</label><input id="rg-conf" type="password"></div>
-    <div class="frow"><label>Register as:</label>
+    <h1>Create account</h1>
+    <div class="lead">Register for access. New accounts are Viewer or User.</div>
+    <div class="frow"><label>Username</label><input id="rg-user"></div>
+    <div class="frow"><label>Email address</label><input id="rg-email" type="email"></div>
+    <div class="frow"><label>Password</label><input id="rg-pass" type="password"></div>
+    <div class="frow"><label>Confirm password</label><input id="rg-conf" type="password"></div>
+    <div class="frow"><label>Account role</label>
       <select id="rg-role">
         <option value="Viewer">Viewer — read-only (Documents)</option>
         <option value="User">User — standard (HR, Patients, Documents)</option>
       </select>
     </div>
     <div class="authbtns">
-      <button class="btn-green" onclick="register()">REGISTER</button>
-      <button class="btn-blue" onclick="showLogin()">BACK TO LOGIN</button>
+      <button class="btn-green" onclick="register()">Register</button>
+      <button class="btn-blue" onclick="showLogin()">Back to Sign In</button>
     </div>
     <div id="rg-msg" class="authmsg"></div>
   </div>
+  <div class="auth-foot">&copy; 2026 SecureAccess Pro &middot; Department of Cyber Security, MUET</div>
 </div>
 
 <!-- ================= DASHBOARD ================= -->
 <div id="view-app" class="hidden">
   <div class="header">
-    <div class="h-title">SecureAccess Pro - Dashboard</div>
+    <div class="h-left"><span class="hmark">SA</span><span class="h-title">SecureAccess Pro</span></div>
     <div class="h-right">
       <div class="h-clock" id="h-clock"></div>
       <div class="h-user" id="h-user"></div>
