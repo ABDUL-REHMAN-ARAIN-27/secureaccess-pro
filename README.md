@@ -113,6 +113,25 @@ New model `behavior_profiles`; new file `ueba.py`; new admin endpoint
 **Limitation:** a lightweight behavioural model trained on small per-user data — a
 demonstrator of adaptive/AI-driven risk, not an enterprise ML detection product.
 
+### Phase 5 — MITRE ATT&CK threat-intelligence mapping
+
+Every detection the system raises is mapped to the corresponding technique in the
+globally recognised **MITRE ATT&CK** knowledge base, turning local alerts into
+standardised threat intelligence.
+
+| Detection | ATT&CK technique |
+|---|---|
+| Brute-force / account lockout | **T1110** Brute Force (Credential Access) |
+| Privilege probing / access rule violation | **T1078** Valid Accounts (Privilege Escalation) |
+| Malicious / suspicious file upload | **T1105** Ingress Tool Transfer (Command & Control) |
+| Behavioural anomaly (UEBA) | **T1078** Valid Accounts (Initial Access) |
+| Audit-log tampering | **T1070** Indicator Removal (Defense Evasion) |
+| Request flooding / rate limit | **T1499** Endpoint DoS (Impact) |
+
+New file `mitre.py`; the Security Alerts tab shows an **ATT&CK column** per alert
+(linked to attack.mitre.org) plus a **MITRE ATT&CK Coverage** panel
+(`GET /api/mitre-coverage`) aggregating observed techniques by tactic and count.
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |

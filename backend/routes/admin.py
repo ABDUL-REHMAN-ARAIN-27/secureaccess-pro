@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, Response, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity
 
+import mitre
 from audit import verify_chain
 from extensions import db
 from models import (
@@ -85,14 +86,13 @@ def verify_audit():
     return jsonify(verify_chain(rows))
 
 
-@admin_bp.route("/api/alerts", methods=["GET"])
-@roles_required(ROLE_ADMIN)
-def get_alerts():
+def _build_alerts():
     """
     Lightweight anomaly detection over recent activity (SOC-style). Surfaces:
       - Brute-force: many failed logins for one user in a short window.
       - Privilege probing: many DENIED access attempts by one user.
-      - Locked accounts.
+      - Locked accounts, malicious/suspicious uploads, audit tampering.
+    Each alert is tagged with its MITRE ATT&CK technique. Returns a sorted list.
     """
     window = datetime.utcnow() - timedelta(minutes=15)
     alerts = []
@@ -168,10 +168,57 @@ def get_alerts():
                        f"({t.detection_name or 'flagged'}) — SHA-256 {(t.file_hash or '')[:12]}…"),
         })
 
+    # Tamper-evidence: a broken audit hash-chain is itself a detection.
+    chain = verify_chain(AccessLog.query.order_by(AccessLog.id.asc()).all())
+    if not chain.get("intact", True):
+        alerts.append({
+            "severity": "HIGH",
+            "type": "Audit log tampering",
+            "subject": "audit log",
+            "detail": f"Hash chain broken at entry #{chain.get('broken_at')}",
+        })
+
+    # Attach the MITRE ATT&CK technique to every alert (threat intelligence).
+    for a in alerts:
+        a["mitre"] = mitre.for_alert_type(a["type"])
+
     order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     alerts.sort(key=lambda a: order.get(a["severity"], 3))
+    return alerts
+
+
+@admin_bp.route("/api/alerts", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def get_alerts():
+    alerts = _build_alerts()
     return jsonify({"count": len(alerts), "alerts": alerts,
                     "generated_at": datetime.utcnow().isoformat()})
+
+
+@admin_bp.route("/api/mitre-coverage", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def mitre_coverage():
+    """Aggregate current detections by MITRE ATT&CK technique (SOC-style coverage)."""
+    alerts = _build_alerts()
+    by_tech = {}
+    for a in alerts:
+        m = a["mitre"]
+        key = m["id"]
+        row = by_tech.setdefault(key, {
+            "id": m["id"], "name": m["name"], "tactic": m["tactic"],
+            "url": m["url"], "count": 0, "max_severity": "LOW",
+        })
+        row["count"] += 1
+        order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+        if order.get(a["severity"], 3) < order.get(row["max_severity"], 3):
+            row["max_severity"] = a["severity"]
+    techniques = sorted(by_tech.values(), key=lambda r: -r["count"])
+    return jsonify({
+        "techniques": techniques,
+        "techniques_observed": len(techniques),
+        "detections": len(alerts),
+        "generated_at": datetime.utcnow().isoformat(),
+    })
 
 
 @admin_bp.route("/api/metrics", methods=["GET"])

@@ -105,6 +105,8 @@
   .rk-med{background:#fef5e7;color:#c87f0a} .rk-high{background:#fdece3;color:#cf5411} .rk-crit{background:#fdeaea;color:#b01919}
   table.rk{box-shadow:0 1px 4px rgba(20,40,60,.06);border-radius:9px;overflow:hidden}
   .rk-mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:#8a97a0}
+  .mitre{color:#8e44ad;font-weight:700;text-decoration:none}
+  .mitre:hover{text-decoration:underline}
   .rk-legend{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0 2px;font-size:11px;color:#7f8c8d}
   .rk-legend b{font-weight:600;color:#7f8c8d;margin-right:2px}
   .rk-legend span{padding:3px 9px;border-radius:5px;font-weight:700}
@@ -442,7 +444,7 @@ async function renderLogFeed(k){
 }
 
 async function renderSecurity(){
-  try{const [m,al,au]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify")]);
+  try{const [m,al,au,mit]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),api("/api/mitre-coverage")]);
     let h=`<h2>Security Alerts &amp; Monitoring</h2><div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
     h+=`<div style="text-align:center"><div class="badge ${au.intact?"ok":"bad"}">Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING DETECTED at entry #"+au.broken_at}</div></div>`;
     h+=`<div class="kpis" style="justify-content:center">
@@ -451,15 +453,27 @@ async function renderSecurity(){
       <div class="kpi" style="color:#e67e22"><b>${m.failed_logins}</b><span>Failed</span></div>
       <div class="kpi" style="color:#c0392b"><b>${m.denied_access}</b><span>Denied</span></div>
       <div class="kpi" style="color:#c0392b"><b>${al.count}</b><span>Alerts</span></div>
-      <div class="kpi" style="color:#27ae60"><b>${m.granted_access}</b><span>Granted</span></div></div>`;
-    h+=`<table><tr><th>Severity</th><th>Type</th><th>Subject</th><th>Detail</th><th style="width:110px">Action</th></tr>`;
+      <div class="kpi" style="color:#8e44ad"><b>${mit.techniques_observed}</b><span>ATT&amp;CK Techniques</span></div></div>`;
+    h+=`<table><tr><th>Severity</th><th>Type</th><th>MITRE ATT&amp;CK</th><th>Subject</th><th>Detail</th><th style="width:100px">Action</th></tr>`;
     al.alerts.forEach(a=>{
-      const canBlock=a.subject && a.subject!=="unknown";
+      const canBlock=a.subject && a.subject!=="unknown" && a.subject!=="audit log";
+      const mm=a.mitre?`<a href="${a.mitre.url}" target="_blank" class="mitre">${a.mitre.id}</a> <span class="muted">${a.mitre.name}</span>`:"";
       h+=`<tr><td><span class="pill ${a.severity==='HIGH'?'pill-bad':'pill-warn'}">${a.severity}</span></td>
-        <td>${a.type}</td><td>${a.subject}</td><td>${a.detail}</td>
+        <td>${a.type}</td><td>${mm}</td><td>${a.subject}</td><td>${a.detail}</td>
         <td>${canBlock?`<button class="btn-block" onclick="blockUser('${a.subject}')">Block</button>`:""}</td></tr>`;
     });
-    if(!al.alerts.length)h+="<tr><td colspan='5' style='text-align:center' class='st-ok'>No active threats detected</td></tr>";
+    if(!al.alerts.length)h+="<tr><td colspan='6' style='text-align:center' class='st-ok'>No active threats detected</td></tr>";
+    h+="</table>";
+
+    // MITRE ATT&CK coverage (threat intelligence)
+    h+=`<div class="rk-sec">MITRE ATT&amp;CK Coverage <span class="tag">detections mapped to the ATT&amp;CK framework</span></div>`;
+    h+=`<table class="rk"><tr><th>Technique</th><th>Name</th><th>Tactic</th><th>Detections</th><th>Severity</th></tr>`;
+    (mit.techniques||[]).forEach(t=>{
+      h+=`<tr><td><a href="${t.url}" target="_blank" class="mitre">${t.id}</a></td><td>${t.name}</td>
+        <td>${t.tactic}</td><td>${t.count}</td>
+        <td><span class="pill ${t.max_severity==='HIGH'?'pill-bad':'pill-warn'}">${t.max_severity}</span></td></tr>`;
+    });
+    if(!(mit.techniques||[]).length)h+="<tr><td colspan='5' style='text-align:center' class='muted'>No techniques observed yet.</td></tr>";
     setContent(h+"</table>");
   }catch(e){setContent("Error: "+e.message);}
 }

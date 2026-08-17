@@ -175,6 +175,26 @@ def test_alerts_flag_bruteforce(client, totp_for):
     assert any("Brute-force" in t for t in types)
 
 
+def test_alerts_are_mapped_to_mitre_attack(client, totp_for):
+    # A brute-force alert must carry its MITRE ATT&CK technique (T1110).
+    for _ in range(3):
+        client.post("/api/login",
+                    json={"username": "viewer", "password": "WRONG", "tfa_code": "0"})
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    alerts = client.get("/api/alerts", headers=admin).get_json()["alerts"]
+    bf = next(a for a in alerts if "Brute-force" in a["type"])
+    assert bf["mitre"]["id"] == "T1110"
+    assert "attack.mitre.org" in bf["mitre"]["url"]
+
+    # The coverage endpoint aggregates observed techniques (admin only).
+    cov = client.get("/api/mitre-coverage", headers=admin).get_json()
+    assert cov["techniques_observed"] >= 1
+    assert any(t["id"] == "T1110" for t in cov["techniques"])
+    # Coverage is admin-only (use 'user'; 'viewer' was just locked by the test).
+    non_admin = auth_header(token_for(client, totp_for, "user", "User@123"))
+    assert client.get("/api/mitre-coverage", headers=non_admin).status_code == 403
+
+
 # --------------------------------------------------------------------------- #
 # Password policy + rate limiting
 # --------------------------------------------------------------------------- #
