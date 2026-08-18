@@ -49,6 +49,7 @@ _TRACK_SKIP = {
     "admin.mitre_coverage",
     "admin.ai_narrative",
     "admin.verify_audit",
+    "admin.verify_audit_anchor",
     "zerotrust.list_risk_events",
     "zerotrust.list_sessions",
     "zerotrust.list_devices",

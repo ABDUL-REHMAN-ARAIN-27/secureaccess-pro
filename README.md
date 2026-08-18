@@ -152,6 +152,17 @@ analyst-style incident narrative.
 
 New file `explainer.py`; new endpoint `GET /api/ai/narrative`.
 
+### Additional security hardening
+
+| Control | Implementation |
+|---|---|
+| **HTTP security headers** | `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `HSTS` (when served over TLS) on every response. |
+| **Session revocation on password reset** | A password reset revokes all of the account's active sessions, so an old token cannot survive a reset. |
+| **MFA backup codes** | Ten single-use recovery codes issued at enrolment (shown once, stored as bcrypt hashes) act as a second factor if the authenticator is lost; `POST /api/backup-codes/regenerate` re-issues them. |
+| **External audit anchor** | Each log entry's hash is checkpointed to an append-only file outside the DB. `GET /api/audit/anchor-verify` detects a full-chain rewrite that an attacker with DB write access could make internally consistent. |
+| **IP-based anomaly rules** | Credential-stuffing (≥5 failures across ≥2 accounts from one IP) and lockout-spike detection, in addition to the per-user rules. |
+| **SQLite hardening** | WAL journal mode + busy timeout + foreign keys for better concurrency and integrity. |
+
 ### RBAC Role-Permission Matrix
 
 | Feature | Admin | User | Viewer |

@@ -35,6 +35,7 @@ class TestConfig(Config):
     FILE_STORE_DIR = os.path.join(_TMP_FILES, "store")
     FILE_QUARANTINE_DIR = os.path.join(_TMP_FILES, "quarantine")
     FILE_TMP_DIR = os.path.join(_TMP_FILES, "tmp")
+    AUDIT_ANCHOR_FILE = os.path.join(_TMP_FILES, "anchor.log")
 
 
 DEMO = [
@@ -46,6 +47,12 @@ DEMO = [
 
 @pytest.fixture()
 def app():
+    # Each test starts with a clean external audit anchor file.
+    try:
+        open(TestConfig.AUDIT_ANCHOR_FILE, "w").close()
+    except OSError:
+        os.makedirs(_TMP_FILES, exist_ok=True)
+        open(TestConfig.AUDIT_ANCHOR_FILE, "w").close()
     app = create_app(TestConfig)
     with app.app_context():
         db.drop_all()

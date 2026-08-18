@@ -339,7 +339,13 @@ async function register(){
   try{const d=await api("/api/register",{method:"POST",body:JSON.stringify({
     username:val("rg-user"),email:val("rg-email"),password:val("rg-pass"),
     confirm_password:val("rg-conf"),role:document.getElementById("rg-role").value})});
-    amsg("rg-msg",d.message+" (Role: "+d.role+")",true); setTimeout(showLogin,3500);
+    amsg("rg-msg",d.message+" (Role: "+d.role+")",true);
+    if(d.backup_codes&&d.backup_codes.length){
+      const grid=d.backup_codes.map(c=>`<code style="display:inline-block;width:46%;padding:4px 0;font-size:14px">${c}</code>`).join("");
+      modal("Save your backup codes",
+        "These single-use recovery codes let you sign in if you lose your authenticator. "+
+        "Store them somewhere safe — they will not be shown again.\n\n<div style='margin-top:8px'>"+grid+"</div>");
+    } else { setTimeout(showLogin,3000); }
   }catch(e){amsg("rg-msg",e.message,false);}
 }
 async function logout(){
@@ -484,9 +490,14 @@ async function renderLogFeed(k){
 }
 
 async function renderSecurity(){
-  try{const [m,al,au,mit,ai]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),api("/api/mitre-coverage"),api("/api/ai/narrative")]);
+  try{const [m,al,au,mit,ai,anc]=await Promise.all([api("/api/metrics"),api("/api/alerts"),api("/api/audit/verify"),api("/api/mitre-coverage"),api("/api/ai/narrative"),api("/api/audit/anchor-verify")]);
     let h=`<h2>Security Alerts &amp; Monitoring</h2><div style="text-align:center"><span class="livepill">auto-refreshing every 3s</span></div>`;
-    h+=`<div style="text-align:center"><div class="badge ${au.intact?"ok":"bad"}">Audit integrity: ${au.intact?"VERIFIED — "+au.total+" entries, no tampering":"TAMPERING DETECTED at entry #"+au.broken_at}</div></div>`;
+    const intact=au.intact&&anc.matched;
+    const badgeTxt=au.intact
+      ? (anc.matched?("VERIFIED — "+au.total+" entries; external anchor matches ("+anc.anchored+" checkpoints)")
+                    :("TAMPERING DETECTED — external anchor mismatch at entry #"+anc.broken_at))
+      : ("TAMPERING DETECTED at entry #"+au.broken_at);
+    h+=`<div style="text-align:center"><div class="badge ${intact?"ok":"bad"}">Audit integrity: ${badgeTxt}</div></div>`;
     // Module 5C — AI Analyst plain-language incident summary
     h+=`<div class="analyst"><div class="analyst-h">AI Analyst Summary</div><div class="analyst-b">${ai.narrative||""}</div></div>`;
     h+=`<div class="kpis" style="justify-content:center">

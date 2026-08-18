@@ -87,6 +87,16 @@ def verify_audit():
     return jsonify(verify_chain(rows))
 
 
+@admin_bp.route("/api/audit/anchor-verify", methods=["GET"])
+@roles_required(ROLE_ADMIN)
+def verify_audit_anchor():
+    """Verify the DB chain against the external append-only anchor file. Detects
+    a full-chain rewrite that the in-DB check alone would miss."""
+    import audit_anchor
+    rows = AccessLog.query.order_by(AccessLog.id.asc()).all()
+    return jsonify(audit_anchor.verify_against_db(rows))
+
+
 def _build_alerts():
     """
     Lightweight anomaly detection over recent activity (SOC-style). Surfaces:

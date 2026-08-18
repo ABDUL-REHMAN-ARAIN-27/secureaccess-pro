@@ -120,6 +120,12 @@ class Config:
     MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "10"))
     MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
 
+    # External, append-only anchor for the audit hash-chain. The latest chain
+    # hash is checkpointed here (outside the SQLite DB), so an attacker who can
+    # rewrite the DB to forge an internally-consistent chain is still caught by
+    # the mismatch against these previously-anchored hashes.
+    AUDIT_ANCHOR_FILE = os.environ.get("AUDIT_ANCHOR_FILE", os.path.join(_VAR_DIR, "audit_anchor.log"))
+
     # File-type policy. By default we accept EVERY format and rely on the scanner
     # + quarantine (Zero Trust: trust no file, scan it). Set UPLOAD_ALLOW_ALL_TYPES
     # =false to instead restrict uploads to the MIME allow-list below (content is

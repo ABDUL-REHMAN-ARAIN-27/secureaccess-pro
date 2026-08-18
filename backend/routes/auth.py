@@ -13,7 +13,7 @@ Every attempt is written to login_history + access_logs for the dashboard.
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
-from flask_jwt_extended import create_access_token, decode_token
+from flask_jwt_extended import create_access_token, decode_token, jwt_required, get_jwt_identity
 
 from extensions import db
 from mailer import send_otp_email, send_reset_email, send_welcome_email
@@ -153,7 +153,13 @@ def login():
         interval=cfg["TOTP_INTERVAL"],
         valid_window=cfg["TOTP_VALID_WINDOW"],
     )
+    # A single-use backup/recovery code is accepted as the second factor, but is
+    # only consumed if the primary factors did not already match.
+    ok_backup = False
     if not (ok_email or ok_totp):
+        import backupcodes
+        ok_backup = backupcodes.verify_and_consume(username, totp_code)
+    if not (ok_email or ok_totp or ok_backup):
         user.register_failure(cfg["MAX_FAILED_ATTEMPTS"], cfg["LOCKOUT_MINUTES"])
         db.session.commit()
         _log_login(username, "FAILED", "Invalid 2FA code")
@@ -262,6 +268,10 @@ def register():
 
     record_access(username, "REGISTER", "SYSTEM", "SUCCESS")
 
+    # Issue single-use MFA backup codes (shown once for the user to store).
+    import backupcodes
+    codes = backupcodes.generate(username, n=10)
+
     # Professional welcome email to the new account's registered address.
     try:
         send_welcome_email(email, username, chosen_role)
@@ -280,6 +290,7 @@ def register():
                     issuer=current_app.config["TOTP_ISSUER"],
                     interval=current_app.config["TOTP_INTERVAL"],
                 ),
+                "backup_codes": codes,
             }
         ),
         201,
@@ -341,3 +352,22 @@ def reset_password():
     db.session.commit()
     record_access(user.username, "PASSWORD_RESET", "SYSTEM", "SUCCESS")
     return jsonify({"message": "Password reset successful. You can now log in."}), 200
+
+
+@auth_bp.route("/api/backup-codes/remaining", methods=["GET"])
+@jwt_required()
+def backup_codes_remaining():
+    import backupcodes
+    return jsonify({"remaining": backupcodes.remaining(get_jwt_identity())})
+
+
+@auth_bp.route("/api/backup-codes/regenerate", methods=["POST"])
+@jwt_required()
+def backup_codes_regenerate():
+    """Issue a fresh set of single-use backup codes (invalidates the old set)."""
+    import backupcodes
+    username = get_jwt_identity()
+    codes = backupcodes.generate(username, n=10)
+    record_access(username, "BACKUP_CODES_REGENERATED", "SYSTEM", "SUCCESS")
+    return jsonify({"message": "New backup codes generated. Save them now.",
+                    "backup_codes": codes})

@@ -67,6 +67,12 @@ def record_access(username, action, resource, status):
         )
         db.session.add(entry)
         db.session.commit()
+        # Checkpoint the new entry's hash to the external append-only anchor.
+        try:
+            import audit_anchor
+            audit_anchor.anchor(entry.id, entry.entry_hash)
+        except Exception:  # pragma: no cover
+            pass
     except Exception:  # pragma: no cover - logging must never break a request
         db.session.rollback()
 

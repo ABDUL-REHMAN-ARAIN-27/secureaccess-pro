@@ -158,6 +158,59 @@ def test_request_otp_does_not_leak_on_wrong_password(client):
     assert "dev_code" not in resp.get_json()  # no code generated for bad credentials
 
 
+def test_backup_codes_issued_and_single_use(client):
+    r = client.post("/api/register", json={
+        "username": "bkuser", "email": "bk@x.com",
+        "password": "Test@1234", "confirm_password": "Test@1234", "role": "User"})
+    assert r.status_code == 201
+    codes = r.get_json()["backup_codes"]
+    assert len(codes) == 10
+    # A backup code works as the second factor.
+    ok = client.post("/api/login", json={
+        "username": "bkuser", "password": "Test@1234", "tfa_code": codes[0]})
+    assert ok.status_code == 200
+    # The same code cannot be replayed.
+    again = client.post("/api/login", json={
+        "username": "bkuser", "password": "Test@1234", "tfa_code": codes[0]})
+    assert again.status_code == 401
+    # A different code still works.
+    ok2 = client.post("/api/login", json={
+        "username": "bkuser", "password": "Test@1234", "tfa_code": codes[1]})
+    assert ok2.status_code == 200
+
+
+def test_audit_external_anchor_catches_full_chain_rewrite(client, totp_for, app):
+    admin = auth_header(token_for(client, totp_for, "admin", "Admin@123"))
+    client.get("/api/protected/hr", headers=admin)
+    client.get("/api/protected/finance", headers=admin)
+    assert client.get("/api/audit/verify", headers=admin).get_json()["intact"] is True
+    assert client.get("/api/audit/anchor-verify", headers=admin).get_json()["matched"] is True
+
+    # Attacker with DB write access rewrites a row and recomputes the WHOLE chain
+    # so it is internally consistent again.
+    from extensions import db as _db
+    from models import AccessLog
+    from audit import compute_entry_hash
+    with app.app_context():
+        rows = AccessLog.query.order_by(AccessLog.id.asc()).all()
+        rows[1].status = "TAMPERED"  # tamper a historical row (distinct value)
+        prev = "GENESIS"
+        for r in rows:
+            r.prev_hash = prev
+            r.entry_hash = compute_entry_hash(
+                prev, r.username, r.action, r.resource, r.status,
+                r.ip_address, r.timestamp.isoformat())
+            prev = r.entry_hash
+        _db.session.commit()
+
+    # The in-DB chain now verifies as intact (the attacker succeeded internally)...
+    assert client.get("/api/audit/verify", headers=admin).get_json()["intact"] is True
+    # ...but the external anchor still catches the rewrite.
+    av = client.get("/api/audit/anchor-verify", headers=admin).get_json()
+    assert av["matched"] is False
+    assert av["broken_at"] is not None
+
+
 # --------------------------------------------------------------------------- #
 # Tamper-evident audit log (hash chain)
 # --------------------------------------------------------------------------- #

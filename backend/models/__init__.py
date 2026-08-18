@@ -10,6 +10,7 @@ from .file import (
     REVIEW_PENDING, REVIEW_APPROVED, REVIEW_REJECTED, REVIEW_QUARANTINED,
 )
 from .behavior import BehaviorProfile
+from .backup import BackupCode
 
 __all__ = [
     "User",
@@ -30,4 +31,5 @@ __all__ = [
     "SCAN_PENDING", "SCAN_CLEAN", "SCAN_SUSPICIOUS", "SCAN_MALICIOUS", "SCAN_ERROR",
     "REVIEW_PENDING", "REVIEW_APPROVED", "REVIEW_REJECTED", "REVIEW_QUARANTINED",
     "BehaviorProfile",
+    "BackupCode",
 ]
