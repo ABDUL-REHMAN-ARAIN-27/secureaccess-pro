@@ -333,6 +333,11 @@ def reset_password():
     user.set_password(new_password)
     user.clear_reset_code()
     user.reset_failures()
+    # Security: a password reset revokes every existing session for this account,
+    # so an attacker holding an old token is forced out immediately.
+    from models import SessionToken
+    SessionToken.query.filter_by(username=user.username, revoked=False).update(
+        {"revoked": True, "revoked_reason": "password reset"}, synchronize_session=False)
     db.session.commit()
     record_access(user.username, "PASSWORD_RESET", "SYSTEM", "SUCCESS")
     return jsonify({"message": "Password reset successful. You can now log in."}), 200

@@ -108,6 +108,28 @@ def test_protected_route_requires_token(client):
     assert client.get("/api/protected/hr").status_code == 401
 
 
+def test_security_headers_present(client):
+    r = client.get("/api/health")
+    assert r.headers.get("X-Content-Type-Options") == "nosniff"
+    assert r.headers.get("X-Frame-Options") == "DENY"
+    assert "default-src 'self'" in r.headers.get("Content-Security-Policy", "")
+
+
+def test_password_reset_revokes_active_sessions(client, totp_for, app):
+    # User logs in (gets a live session/token).
+    _, uh = _login_dev(client, totp_for, "user", "User@123", device="u")
+    assert client.get("/api/protected/documents", headers=uh).status_code == 200
+    # Request + apply a password reset (dev mode returns the code).
+    fp = client.post("/api/forgot-password", json={"username": "user"}).get_json()
+    code = fp["dev_code"]
+    r = client.post("/api/reset-password", json={
+        "username": "user", "code": code,
+        "password": "NewPass@123", "confirm_password": "NewPass@123"})
+    assert r.status_code == 200
+    # The old token is now revoked (forced logout everywhere).
+    assert client.get("/api/protected/documents", headers=uh).status_code == 401
+
+
 # --------------------------------------------------------------------------- #
 # Email OTP second factor
 # --------------------------------------------------------------------------- #

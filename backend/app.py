@@ -11,9 +11,12 @@ Run:
 """
 
 import os
+import sqlite3
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from config import Config
 from extensions import db, jwt
@@ -21,6 +24,18 @@ from security import client_ip
 # Models must be imported so SQLAlchemy registers the tables.
 from models import SiteAccess  # noqa: F401
 import models  # noqa: F401
+
+
+# SQLite hardening: WAL journalling improves concurrent-read/write behaviour and
+# a busy timeout avoids "database is locked" errors under light concurrency.
+@event.listens_for(Engine, "connect")
+def _sqlite_pragmas(dbapi_conn, _rec):  # pragma: no cover - infra glue
+    if isinstance(dbapi_conn, sqlite3.Connection):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=5000")
+        cur.execute("PRAGMA foreign_keys=ON")
+        cur.close()
 
 
 # Endpoints that must NOT be site-access-tracked (avoids log noise / recursion).
@@ -155,6 +170,26 @@ def _register_request_hooks(app):
             db.session.commit()
         except Exception:
             db.session.rollback()
+
+    @app.after_request
+    def security_headers(resp):
+        """Defence-in-depth HTTP response headers (mitigate XSS, clickjacking,
+        MIME-sniffing, and enforce HTTPS when served over TLS)."""
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("Referrer-Policy", "no-referrer")
+        resp.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "   # SPA uses one inline script
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; connect-src 'self'; "
+            "object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+        )
+        if request.is_secure:  # only meaningful once behind TLS
+            resp.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+        return resp
 
 
 def _register_error_handlers(app):

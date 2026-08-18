@@ -115,6 +115,22 @@ def _build_alerts():
                 "detail": f"{count} failed logins in the last 15 minutes",
             })
 
+    # IP-based brute-force / credential stuffing: many failures from one source
+    # IP spread across multiple accounts (a signal the per-user rule can miss).
+    ip_threshold = current_app.config.get("IP_BRUTEFORCE_THRESHOLD", 5)
+    per_ip = Counter(f.ip_address for f in failed if f.ip_address)
+    for ip, count in per_ip.items():
+        accounts = len({f.username for f in failed if f.ip_address == ip})
+        if count >= ip_threshold and accounts >= 2:
+            alerts.append({
+                "severity": "HIGH",
+                "type": "Brute-force / credential attack",
+                "subject": ip,
+                "detail": f"{count} failed logins across {accounts} accounts from {ip} "
+                          "(possible credential stuffing)",
+                "blockable": False,
+            })
+
     # Access-rule violations: ANY denied attempt is flagged immediately, and
     # escalated to "privilege probing" once it repeats.
     denied = (
@@ -144,12 +160,23 @@ def _build_alerts():
             })
 
     # Locked accounts.
-    for u in User.query.filter(User.locked_until > datetime.utcnow()).all():
+    locked = User.query.filter(User.locked_until > datetime.utcnow()).all()
+    for u in locked:
         alerts.append({
             "severity": "MEDIUM",
             "type": "Account locked",
             "subject": u.username,
             "detail": "Account locked after repeated failed logins",
+        })
+    # Lockout spike: several accounts locked at once suggests a wider campaign.
+    if len(locked) >= 2:
+        alerts.append({
+            "severity": "HIGH",
+            "type": "Account locked",
+            "subject": f"{len(locked)} accounts",
+            "detail": f"Lockout spike: {len(locked)} accounts locked in a short window "
+                      "(possible distributed brute-force)",
+            "blockable": False,
         })
 
     # Malicious / suspicious file uploads (from the file-security module).
@@ -177,6 +204,7 @@ def _build_alerts():
             "type": "Audit log tampering",
             "subject": "audit log",
             "detail": f"Hash chain broken at entry #{chain.get('broken_at')}",
+            "blockable": False,
         })
 
     # Attach the MITRE ATT&CK technique to every alert (threat intelligence).

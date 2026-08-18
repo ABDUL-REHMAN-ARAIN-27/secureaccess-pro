@@ -73,6 +73,11 @@ class Config:
     RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "30"))
     RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60"))
 
+    # --- Anomaly detection thresholds (Security Alerts) ---
+    # Failed logins from ONE source IP spread across >=2 accounts within the
+    # 15-minute window that raise a credential-stuffing alert.
+    IP_BRUTEFORCE_THRESHOLD = int(os.environ.get("IP_BRUTEFORCE_THRESHOLD", "5"))
+
     # --- Phase 2: Risk-Based Access Control (risk engine weights) ---
     # A login/access request is scored 0-100 from these signals; the total maps
     # to a LOW / MEDIUM / HIGH band that the policy engine turns into a decision.

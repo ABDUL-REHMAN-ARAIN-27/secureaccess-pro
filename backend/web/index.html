@@ -498,7 +498,7 @@ async function renderSecurity(){
       <div class="kpi" style="color:#8e44ad"><b>${mit.techniques_observed}</b><span>ATT&amp;CK Techniques</span></div></div>`;
     h+=`<table><tr><th>Severity</th><th>Type</th><th>MITRE ATT&amp;CK</th><th>Subject</th><th>Detail</th><th style="width:100px">Action</th></tr>`;
     al.alerts.forEach(a=>{
-      const canBlock=a.subject && a.subject!=="unknown" && a.subject!=="audit log";
+      const canBlock=a.blockable!==false && a.subject && a.subject!=="unknown" && a.subject!=="audit log";
       const mm=a.mitre?`<a href="${a.mitre.url}" target="_blank" class="mitre">${a.mitre.id}</a> <span class="muted">${a.mitre.name}</span>`:"";
       h+=`<tr><td><span class="pill ${a.severity==='HIGH'?'pill-bad':'pill-warn'}">${a.severity}</span></td>
         <td>${a.type}</td><td>${mm}</td><td>${a.subject}</td><td>${a.detail}</td>
