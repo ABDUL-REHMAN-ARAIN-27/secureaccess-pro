@@ -275,7 +275,7 @@ function showLogin(){show("login");} function showRegister(){show("register");} 
 function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.className="authmsg "+(ok?"ok":"err");}
 function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
-  opts.headers=Object.assign({"Content-Type":"application/json","X-Device-Id":deviceId()},opts.headers||{});
+  opts.headers=Object.assign({"Content-Type":"application/json","X-Device-Id":deviceId(),"X-Client-Type":"browser"},opts.headers||{});
   // Send the HttpOnly JWT cookie; add the CSRF header on state-changing calls.
   opts.credentials="same-origin";
   const m=(opts.method||"GET").toUpperCase();

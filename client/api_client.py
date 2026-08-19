@@ -31,7 +31,11 @@ class ApiClient:
 
     # ------------------------------------------------------------------ #
     def _headers(self):
-        h = {"Content-Type": "application/json"}
+        # X-Client-Type marks this as a native (non-browser) client, so /api/login
+        # returns the raw JWT in the body for the Authorization: Bearer header
+        # below. Only the browser SPA sends X-Client-Type: browser, which makes
+        # the server withhold the token and rely on the HttpOnly cookie instead.
+        h = {"Content-Type": "application/json", "X-Client-Type": "desktop"}
         if self.token:
             h["Authorization"] = f"Bearer {self.token}"
         return h

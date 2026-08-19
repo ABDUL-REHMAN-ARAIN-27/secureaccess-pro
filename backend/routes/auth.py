@@ -210,26 +210,30 @@ def login():
     _log_login(username, "SUCCESS")
     record_access(username, "LOGIN", "SYSTEM", "SUCCESS")
 
-    resp = jsonify(
-        {
-            # Returned in the body for header-based clients (desktop apps, the
-            # API/CLI, the test-suite). The browser SPA ignores this and relies
-            # on the HttpOnly cookie set below, so page JS never stores it.
-            "token": access_token,
-            "username": user.username,
-            "role": user.role,
-            "expires_in_minutes": int(
-                cfg["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() // 60
-            ),
-            "risk": {
-                "score": score,
-                "cvss": risk_engine.cvss_of(score),
-                "level": level,
-                "factors": factors,
-                "known_device": known_device,
-            },
-        }
-    )
+    body = {
+        "username": user.username,
+        "role": user.role,
+        "expires_in_minutes": int(
+            cfg["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() // 60
+        ),
+        "risk": {
+            "score": score,
+            "cvss": risk_engine.cvss_of(score),
+            "level": level,
+            "factors": factors,
+            "known_device": known_device,
+        },
+    }
+    # The browser SPA sends X-Client-Type: browser and therefore receives NO
+    # token in the body — the JWT reaches the browser only inside the HttpOnly
+    # cookie set below, so it is invisible to page JavaScript (nothing to steal
+    # via XSS) and never appears in the login response / Network tab. Every
+    # other (native/header) client — the desktop app, the API/CLI, the
+    # test-suite — gets the raw token here to carry in an Authorization header.
+    if request.headers.get("X-Client-Type", "").strip().lower() != "browser":
+        body["token"] = access_token
+
+    resp = jsonify(body)
     # Browser storage: write the JWT into an HttpOnly, Secure, SameSite=Strict
     # cookie (+ a readable CSRF token cookie) so JavaScript cannot exfiltrate
     # the session token via XSS.
