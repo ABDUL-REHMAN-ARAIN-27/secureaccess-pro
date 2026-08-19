@@ -13,7 +13,13 @@ Every attempt is written to login_history + access_logs for the dashboard.
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
-from flask_jwt_extended import create_access_token, decode_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import (
+    create_access_token,
+    decode_token,
+    jwt_required,
+    get_jwt_identity,
+    set_access_cookies,
+)
 
 from extensions import db
 from mailer import send_otp_email, send_reset_email, send_welcome_email
@@ -204,26 +210,31 @@ def login():
     _log_login(username, "SUCCESS")
     record_access(username, "LOGIN", "SYSTEM", "SUCCESS")
 
-    return (
-        jsonify(
-            {
-                "token": access_token,
-                "username": user.username,
-                "role": user.role,
-                "expires_in_minutes": int(
-                    cfg["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() // 60
-                ),
-                "risk": {
-                    "score": score,
-                    "cvss": risk_engine.cvss_of(score),
-                    "level": level,
-                    "factors": factors,
-                    "known_device": known_device,
-                },
-            }
-        ),
-        200,
+    resp = jsonify(
+        {
+            # Returned in the body for header-based clients (desktop apps, the
+            # API/CLI, the test-suite). The browser SPA ignores this and relies
+            # on the HttpOnly cookie set below, so page JS never stores it.
+            "token": access_token,
+            "username": user.username,
+            "role": user.role,
+            "expires_in_minutes": int(
+                cfg["JWT_ACCESS_TOKEN_EXPIRES"].total_seconds() // 60
+            ),
+            "risk": {
+                "score": score,
+                "cvss": risk_engine.cvss_of(score),
+                "level": level,
+                "factors": factors,
+                "known_device": known_device,
+            },
+        }
     )
+    # Browser storage: write the JWT into an HttpOnly, Secure, SameSite=Strict
+    # cookie (+ a readable CSRF token cookie) so JavaScript cannot exfiltrate
+    # the session token via XSS.
+    set_access_cookies(resp, access_token)
+    return resp, 200
 
 
 @auth_bp.route("/api/register", methods=["POST"])

@@ -247,8 +247,18 @@
 <div id="modal-host"></div>
 
 <script>
-let token=null, role=null, username=null, email=null, lastRisk=null;
+/* The browser never holds the JWT: after login it lives only in an HttpOnly,
+   Secure, SameSite=Strict cookie the page's JavaScript cannot read. `authed`
+   just tracks whether a session is active so the UI can react to expiry. */
+let authed=false, role=null, username=null, email=null, lastRisk=null;
 let monitorTimer=null;
+
+/* CSRF double-submit: read the readable csrf_access_token cookie that the
+   server pairs with the HttpOnly JWT cookie, to echo on state-changing calls. */
+function csrfToken(){
+  const m=document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/);
+  return m?decodeURIComponent(m[1]):null;
+}
 
 /* Phase 2: a stable per-browser device id (never PII) for device-trust. */
 function deviceId(){
@@ -266,7 +276,10 @@ function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.cla
 function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
   opts.headers=Object.assign({"Content-Type":"application/json","X-Device-Id":deviceId()},opts.headers||{});
-  if(token)opts.headers["Authorization"]="Bearer "+token;
+  // Send the HttpOnly JWT cookie; add the CSRF header on state-changing calls.
+  opts.credentials="same-origin";
+  const m=(opts.method||"GET").toUpperCase();
+  if(["POST","PUT","PATCH","DELETE"].includes(m)){const c=csrfToken();if(c)opts.headers["X-CSRF-TOKEN"]=c;}
   const r=await fetch(path,opts); let b={}; try{b=await r.json()}catch(e){}
   if(!r.ok){
     // Phase 2: a revoked session ends the session immediately (401 blocklist or
@@ -274,14 +287,14 @@ async function api(path,opts={}){
     if(b.session_revoked){handleRevoked(b.error||"Session revoked.");}
     // Expired / invalid JWT while logged in -> send back to login clearly
     // (so it never looks like an action "silently did nothing").
-    else if(r.status===401 && token){handleRevoked("Your session expired.");}
+    else if(r.status===401 && authed){handleRevoked("Your session expired.");}
     throw{status:r.status,message:b.error||b.detail||b.msg||r.statusText,body:b};
   }
   return b;
 }
 function handleRevoked(msg){
   stopMonitor(); if(clockTimer)clearInterval(clockTimer);
-  token=role=username=null;
+  authed=false; role=username=null;
   show("login"); amsg("li-msg",msg+" Please sign in again.",false);
 }
 function stopMonitor(){if(monitorTimer){clearInterval(monitorTimer);monitorTimer=null;}}
@@ -332,7 +345,8 @@ async function requestOtp(){
 async function login(){
   try{const d=await api("/api/login",{method:"POST",body:JSON.stringify(
     {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp"),device_id:deviceId()})});
-    token=d.token;role=d.role;username=d.username;email=d.email;lastRisk=d.risk||null;enterApp();
+    // The JWT is now in the HttpOnly cookie; we deliberately do NOT keep d.token.
+    authed=true;role=d.role;username=d.username;email=d.email;lastRisk=d.risk||null;enterApp();
   }catch(e){amsg("li-msg",e.message,false);}
 }
 async function register(){
@@ -351,7 +365,7 @@ async function register(){
 async function logout(){
   try{await api("/api/logout",{method:"POST"});}catch(e){}  // revoke the session server-side
   stopMonitor();if(clockTimer)clearInterval(clockTimer);
-  token=role=username=null;document.getElementById("li-otp").value="";show("login");
+  authed=false;role=username=null;document.getElementById("li-otp").value="";show("login");
 }
 
 async function sendReset(){
@@ -700,8 +714,8 @@ async function uploadFile(){
   const fd=new FormData(); fd.append("file",inp.files[0]);
   fmsg("Uploading and running the security scan…",true);
   try{
-    const r=await fetch("/api/files/upload",{method:"POST",
-      headers:{"Authorization":"Bearer "+token,"X-Device-Id":deviceId()},body:fd});
+    const r=await fetch("/api/files/upload",{method:"POST",credentials:"same-origin",
+      headers:{"X-Device-Id":deviceId(),"X-CSRF-TOKEN":csrfToken()||""},body:fd});
     const b=await r.json().catch(()=>({}));
     if(!r.ok){
       if(b.session_revoked){handleRevoked(b.error||"Session revoked.");return;}
@@ -738,7 +752,7 @@ async function loadMyFiles(){
 }
 async function downloadFile(id){
   try{
-    const r=await fetch("/api/files/"+id+"/download",{headers:{"Authorization":"Bearer "+token,"X-Device-Id":deviceId()}});
+    const r=await fetch("/api/files/"+id+"/download",{credentials:"same-origin",headers:{"X-Device-Id":deviceId()}});
     if(!r.ok){const b=await r.json().catch(()=>({}));if(b.session_revoked)handleRevoked(b.error||"Session revoked.");return alert(b.error||"Download failed.");}
     const blob=await r.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement("a"); a.href=url; a.download=""; document.body.appendChild(a); a.click(); a.remove();

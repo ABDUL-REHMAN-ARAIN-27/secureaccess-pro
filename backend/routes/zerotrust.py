@@ -17,7 +17,7 @@ self-service logout that revokes the caller's own session:
 from datetime import datetime, timedelta
 
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity, unset_jwt_cookies
 
 from extensions import db
 from models import SessionToken, RiskEvent, TrustedDevice, BehaviorProfile, ROLE_ADMIN
@@ -125,4 +125,7 @@ def logout():
     if session:
         risk_engine.revoke_session(session, "User logout")
     record_access(get_jwt_identity(), "LOGOUT", "SYSTEM", "SUCCESS")
-    return jsonify({"message": "Logged out — session revoked."})
+    resp = jsonify({"message": "Logged out — session revoked."})
+    # Clear the browser's HttpOnly JWT + CSRF cookies (no-op for header clients).
+    unset_jwt_cookies(resp)
+    return resp

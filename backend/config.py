@@ -42,6 +42,27 @@ class Config:
         minutes=int(os.environ.get("JWT_EXPIRES_MINUTES", "15"))
     )
 
+    # --- JWT storage / transport (Zero Trust, XSS-hardened) ---------------
+    # The token is accepted from EITHER an Authorization: Bearer header (desktop
+    # apps, API/CLI clients, the test-suite) OR an HttpOnly cookie (the browser
+    # SPA). For the browser, the token is written into an HttpOnly + Secure +
+    # SameSite=Strict cookie so that page JavaScript can NEVER read the stored
+    # session token — mitigating XSS-based token theft. "headers" is listed
+    # first so header-authenticated (non-browser) requests are matched before
+    # the cookie and are therefore exempt from the CSRF check below.
+    JWT_TOKEN_LOCATION = ["headers", "cookies"]
+    JWT_COOKIE_SAMESITE = "Strict"
+    # Secure flag: True in production (served over HTTPS). Defaults to False so
+    # the cookie still works over plain http://localhost during a local demo.
+    JWT_COOKIE_SECURE = os.environ.get("JWT_COOKIE_SECURE", "false").lower() == "true"
+    # Double-submit CSRF protection for COOKIE-authenticated state-changing
+    # requests. set_access_cookies() emits a readable `csrf_access_token`
+    # cookie; the SPA echoes it back in the X-CSRF-TOKEN header on POST/PUT/
+    # PATCH/DELETE. Bearer-header requests carry no ambient credential and are
+    # not subject to this check.
+    JWT_COOKIE_CSRF_PROTECT = True
+    JWT_ACCESS_COOKIE_PATH = "/"
+
     # --- Multi-Factor Authentication (TOTP) ---
     # 30-second time step is the standard TOTP window referenced in the threat model.
     TOTP_ISSUER = os.environ.get("TOTP_ISSUER", "SecureAccess Pro")
