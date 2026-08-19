@@ -126,6 +126,5 @@ def logout():
         risk_engine.revoke_session(session, "User logout")
     record_access(get_jwt_identity(), "LOGOUT", "SYSTEM", "SUCCESS")
     resp = jsonify({"message": "Logged out — session revoked."})
-    # Clear the browser's HttpOnly JWT + CSRF cookies (no-op for header clients).
-    unset_jwt_cookies(resp)
+    unset_jwt_cookies(resp)  # clear the browser cookie (no effect for header clients)
     return resp

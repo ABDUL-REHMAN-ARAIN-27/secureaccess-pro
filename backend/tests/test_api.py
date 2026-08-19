@@ -36,45 +36,35 @@ def test_unknown_user_rejected(client):
 # JWT storage (Point 1): HttpOnly, Secure*, SameSite=Strict cookie + CSRF
 # --------------------------------------------------------------------------- #
 def test_jwt_stored_in_httponly_samesite_cookie_with_csrf(client, totp_for):
-    """After login the JWT is placed in an HttpOnly, SameSite=Strict cookie that
-    JavaScript cannot read, alongside a readable CSRF token. Cookie-only auth
-    works for reads, and a state-changing request without the CSRF header is
-    rejected — proving XSS-hardened, CSRF-protected browser sessions."""
-    # Browser-style login: NO X-Client-Type header, so the token must NOT appear
-    # in the response body — the browser only ever receives it in the cookie.
+    """Browser login: token goes into an HttpOnly + SameSite=Strict cookie (JS
+    can't read it), no token in the body, and writes need the CSRF header."""
+    # browser login sends X-Client-Type: browser -> no token in the body
     resp = client.post(
         "/api/login",
         json={"username": "admin", "password": "Admin@123", "tfa_code": totp_for("admin")},
         headers={"X-Client-Type": "browser"},
     )
     assert resp.status_code == 200
-    assert "token" not in resp.get_json()  # nothing for page JS / the Network tab
-    set_cookies = "\n".join(resp.headers.getlist("Set-Cookie"))
+    assert "token" not in resp.get_json()
 
-    # The session token cookie is HttpOnly (JS can't read it) and SameSite=Strict.
-    assert "access_token_cookie=" in set_cookies
+    # the JWT cookie is HttpOnly + SameSite=Strict
     jwt_line = next(l for l in resp.headers.getlist("Set-Cookie")
                     if l.startswith("access_token_cookie="))
     assert "HttpOnly" in jwt_line
     assert "SameSite=Strict" in jwt_line
 
-    # The paired CSRF cookie is deliberately NOT HttpOnly (double-submit design).
+    # the csrf cookie is readable on purpose (double-submit)
     csrf_line = next(l for l in resp.headers.getlist("Set-Cookie")
                      if l.startswith("csrf_access_token="))
     assert "HttpOnly" not in csrf_line
     csrf = csrf_line.split("csrf_access_token=", 1)[1].split(";", 1)[0]
 
-    # A fresh client that only carries the cookies (no Authorization header) can
-    # read a protected resource — the browser is authenticated by the cookie.
-    cookie_client = client
-    assert cookie_client.get("/api/metrics").status_code == 200
+    # cookie alone is enough to read
+    assert client.get("/api/metrics").status_code == 200
 
-    # Cookie-authenticated state change WITHOUT the CSRF header is blocked...
-    assert cookie_client.post("/api/logout").status_code == 401
-    # ...but succeeds once the CSRF token is echoed back in the header.
-    assert cookie_client.post(
-        "/api/logout", headers={"X-CSRF-TOKEN": csrf}
-    ).status_code == 200
+    # but a write needs the csrf header
+    assert client.post("/api/logout").status_code == 401
+    assert client.post("/api/logout", headers={"X-CSRF-TOKEN": csrf}).status_code == 200
 
 
 # --------------------------------------------------------------------------- #

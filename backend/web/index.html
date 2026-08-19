@@ -247,14 +247,12 @@
 <div id="modal-host"></div>
 
 <script>
-/* The browser never holds the JWT: after login it lives only in an HttpOnly,
-   Secure, SameSite=Strict cookie the page's JavaScript cannot read. `authed`
-   just tracks whether a session is active so the UI can react to expiry. */
+/* We never keep the JWT in JS now — it stays in the HttpOnly cookie. authed is
+   just a flag so the UI knows a session is active. */
 let authed=false, role=null, username=null, email=null, lastRisk=null;
 let monitorTimer=null;
 
-/* CSRF double-submit: read the readable csrf_access_token cookie that the
-   server pairs with the HttpOnly JWT cookie, to echo on state-changing calls. */
+/* Read the csrf cookie so we can send it back as X-CSRF-TOKEN on writes. */
 function csrfToken(){
   const m=document.cookie.match(/(?:^|;\s*)csrf_access_token=([^;]+)/);
   return m?decodeURIComponent(m[1]):null;
@@ -276,7 +274,7 @@ function amsg(id,t,ok){const e=document.getElementById(id);e.textContent=t;e.cla
 function val(id){return document.getElementById(id).value.trim();}
 async function api(path,opts={}){
   opts.headers=Object.assign({"Content-Type":"application/json","X-Device-Id":deviceId(),"X-Client-Type":"browser"},opts.headers||{});
-  // Send the HttpOnly JWT cookie; add the CSRF header on state-changing calls.
+  // cookie carries the JWT; add CSRF header on writes
   opts.credentials="same-origin";
   const m=(opts.method||"GET").toUpperCase();
   if(["POST","PUT","PATCH","DELETE"].includes(m)){const c=csrfToken();if(c)opts.headers["X-CSRF-TOKEN"]=c;}
@@ -345,7 +343,7 @@ async function requestOtp(){
 async function login(){
   try{const d=await api("/api/login",{method:"POST",body:JSON.stringify(
     {username:val("li-user"),password:val("li-pass"),tfa_code:val("li-otp"),device_id:deviceId()})});
-    // The JWT is now in the HttpOnly cookie; we deliberately do NOT keep d.token.
+    // token is in the cookie now, we don't store it here
     authed=true;role=d.role;username=d.username;email=d.email;lastRisk=d.risk||null;enterApp();
   }catch(e){amsg("li-msg",e.message,false);}
 }

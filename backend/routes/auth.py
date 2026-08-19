@@ -224,19 +224,13 @@ def login():
             "known_device": known_device,
         },
     }
-    # The browser SPA sends X-Client-Type: browser and therefore receives NO
-    # token in the body — the JWT reaches the browser only inside the HttpOnly
-    # cookie set below, so it is invisible to page JavaScript (nothing to steal
-    # via XSS) and never appears in the login response / Network tab. Every
-    # other (native/header) client — the desktop app, the API/CLI, the
-    # test-suite — gets the raw token here to carry in an Authorization header.
+    # Browser gets the token only in the cookie below, so we don't put it in the
+    # body for it. Desktop app / tests send X-Client-Type != browser and need it.
     if request.headers.get("X-Client-Type", "").strip().lower() != "browser":
         body["token"] = access_token
 
     resp = jsonify(body)
-    # Browser storage: write the JWT into an HttpOnly, Secure, SameSite=Strict
-    # cookie (+ a readable CSRF token cookie) so JavaScript cannot exfiltrate
-    # the session token via XSS.
+    # Put the JWT in an HttpOnly cookie so page JS can't read it (XSS safety).
     set_access_cookies(resp, access_token)
     return resp, 200
 

@@ -42,24 +42,14 @@ class Config:
         minutes=int(os.environ.get("JWT_EXPIRES_MINUTES", "15"))
     )
 
-    # --- JWT storage / transport (Zero Trust, XSS-hardened) ---------------
-    # The token is accepted from EITHER an Authorization: Bearer header (desktop
-    # apps, API/CLI clients, the test-suite) OR an HttpOnly cookie (the browser
-    # SPA). For the browser, the token is written into an HttpOnly + Secure +
-    # SameSite=Strict cookie so that page JavaScript can NEVER read the stored
-    # session token — mitigating XSS-based token theft. "headers" is listed
-    # first so header-authenticated (non-browser) requests are matched before
-    # the cookie and are therefore exempt from the CSRF check below.
+    # Token comes from the Bearer header (desktop app, tests) or an HttpOnly
+    # cookie (browser). Header is checked first, so header requests skip CSRF.
     JWT_TOKEN_LOCATION = ["headers", "cookies"]
     JWT_COOKIE_SAMESITE = "Strict"
-    # Secure flag: True in production (served over HTTPS). Defaults to False so
-    # the cookie still works over plain http://localhost during a local demo.
+    # Secure only makes sense over HTTPS; keep it off for local http demo.
     JWT_COOKIE_SECURE = os.environ.get("JWT_COOKIE_SECURE", "false").lower() == "true"
-    # Double-submit CSRF protection for COOKIE-authenticated state-changing
-    # requests. set_access_cookies() emits a readable `csrf_access_token`
-    # cookie; the SPA echoes it back in the X-CSRF-TOKEN header on POST/PUT/
-    # PATCH/DELETE. Bearer-header requests carry no ambient credential and are
-    # not subject to this check.
+    # CSRF check for the cookie. The SPA reads csrf_access_token and sends it
+    # back as X-CSRF-TOKEN on POST/PUT/PATCH/DELETE. Bearer requests skip this.
     JWT_COOKIE_CSRF_PROTECT = True
     JWT_ACCESS_COOKIE_PATH = "/"
 
